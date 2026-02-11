@@ -1,5 +1,3 @@
-Voici un README complet pour le projet :
-
 ```markdown
 # 🔥 Calcul Automatique IFM (Indice Forêt Météo)
 
@@ -197,7 +195,7 @@ ZONE = {
 ### Modifier les échéances
 
 ```python
-MAX_HOURS = 48  # Jusqu'à H+48 (attention, temps de calcul ×1.3)
+MAX_HOURS = 36  # Jusqu'à H+36
 ```
 
 ### Ajuster la résolution
