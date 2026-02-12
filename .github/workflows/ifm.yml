@@ -35,7 +35,6 @@ jobs:
     
     - name: Commit résultats
       run: |
-        git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add ifm_*.csv
         git diff --quiet && git diff --staged --quiet || git commit -m "Update IFM $(date +%Y%m%d_%H%M)"
