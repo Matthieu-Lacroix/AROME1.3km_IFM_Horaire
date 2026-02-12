@@ -3,52 +3,49 @@ name: Calcul IFM AROME
 on:
   schedule:
     # 3h30 après chaque run AROME (0, 6, 12, 18 UTC)
-    # Attention: UTC. Donc 03:30 UTC = 04:30 ou 05:30 Paris selon saison
     - cron: '30 3,9,15,21 * * *'
-  workflow_dispatch:  # Permet de lancer manuellement le bouton "Run workflow"
+  workflow_dispatch:
 
 permissions:
-  contents: write  # Indispensable pour pouvoir faire le git push
+  contents: write
 
 jobs:
   calcul-ifm:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Récupération du code (Checkout)
-        uses: actions/checkout@v3
+      - name: Récupération du code
+        uses: actions/checkout@v4  # Mise à jour v3 -> v4
 
-      - name: Installation librairie système (Indispensable pour cfgrib)
+      - name: Installation librairie système (eccodes)
         run: |
           sudo apt-get update
           sudo apt-get install -y libeccodes0 libeccodes-dev
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5  # Mise à jour v4 -> v5
         with:
           python-version: '3.10'
 
-      - name: Installation dépendances Python
+      - name: Installation dépendances
         run: |
           pip install requests numpy pandas xarray cfgrib netCDF4
 
       - name: Lancement du Calcul IFM
         env:
-          # NE METS PAS TES CLÉS ICI EN CLAIR !
-          # Utilise les "Secrets" du repo GitHub (Settings -> Secrets and variables -> Actions)
           MF_CLIENT_ID: ${{ secrets.MF_CLIENT_ID }}
           MF_CLIENT_SECRET: ${{ secrets.MF_CLIENT_SECRET }}
         run: python calcul_ifm.py
 
       - name: Sauvegarde CSV (Artifact)
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # <--- C'EST ICI LA CORRECTION (v3 -> v4)
         with:
           name: ifm-results
           path: ifm_*.csv
+          overwrite: true  # Option utile en v4 pour écraser si besoin
 
-      - name: Commit et Push des résultats
+      - name: Commit et Push
         run: |
           git config --local user.name "GitHub Action"
           git add ifm_*.csv
-          # On vérifie s'il y a des changements avant de commit pour éviter une erreur
           git diff --quiet && git diff --staged --quiet || (git commit -m "Update IFM $(date +%Y-%m-%d_%H:%M)" && git push)
