@@ -2,7 +2,7 @@ name: Calcul IFM AROME
 
 on:
   schedule:
-#    - cron: '30 3,9,15,21 * * *'  # 3h30 après chaque run (0,6,12,18 UTC)
+  - cron: '30 3,9,15,21 * * *'  # 3h30 après chaque run (0,6,12,18 UTC)
   workflow_dispatch:
 
 jobs:
@@ -23,8 +23,8 @@ jobs:
     
     - name: Calcul IFM
       env:
-        MF_CLIENT_ID: ${{ secrets.MF_CLIENT_ID }}
-        MF_CLIENT_SECRET: ${{ secrets.MF_CLIENT_SECRET }}
+        MF_CLIENT_ID: "aMfrWXIYRIcpTaS7D1WgDaP_bX0a"
+        MF_CLIENT_SECRET: "jPiFJ8XJdifXJKAbdcddGIrQ_6ga"
       run: python calcul_ifm.py
     
     - name: Upload CSV
