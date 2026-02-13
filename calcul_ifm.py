@@ -3,7 +3,8 @@
 Calcul automatique IFM (Indice Forêt Météo) depuis AROME
 Export CSV uniquement - Version GitHub Actions
 """
-
+import os
+import sys
 import requests
 import numpy as np
 import pandas as pd
@@ -14,10 +15,16 @@ import base64
 import warnings
 warnings.filterwarnings('ignore')
 
+
 # ==================== CONFIGURATION ====================
 
-CLIENT_ID = "VOTRE_CLIENT_ID"
-CLIENT_SECRET = "VOTRE_SECRET"
+CLIENT_ID = os.getenv('MF_CLIENT_ID')
+CLIENT_SECRET = os.getenv('MF_CLIENT_SECRET')
+
+if not CLIENT_ID or not CLIENT_SECRET:
+    print("❌ ERREUR: Variables d'environnement MF_CLIENT_ID et MF_CLIENT_SECRET requises")
+    sys.exit(1)
+    
 TOKEN_URL = "https://portail-api.meteofrance.fr/token"
 BASE_URL = "https://public-api.meteofrance.fr/public/arome/1.0/wcs/MF-NWP-HIGHRES-AROME-001-FRANCE-WCS"
 
@@ -251,3 +258,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
