@@ -34,7 +34,7 @@ BASE_URL = "https://public-api.meteofrance.fr/public/arome/1.0/wcs/MF-NWP-HIGHRE
 
 ZONE = {'lat': (44.0, 46.5), 'long': (2.5, 7.5), 'name': 'Auvergne-Rhône-Alpes'}
 MAX_HOURS = 36
-SUBSAMPLE = 3
+SUBSAMPLE = 1
 
 # Valeurs initiales adaptées pour la France (printemps/été)
 # Ces valeurs seront ajustées automatiquement selon la saison
@@ -683,3 +683,4 @@ if __name__ == "__main__":
         import traceback
         traceback.print_exc()
         sys.exit(1)
+
