@@ -34,7 +34,7 @@ BASE_URL = "https://public-api.meteofrance.fr/public/arome/1.0/wcs/MF-NWP-HIGHRE
 
 ZONE = {'lat': (44.0, 46.5), 'long': (2.5, 7.5), 'name': 'Auvergne-Rhône-Alpes'}
 MAX_HOURS = 36
-SUBSAMPLE = 1
+SUBSAMPLE = 3
 
 # Valeurs initiales adaptées pour la France (printemps/été)
 # Ces valeurs seront ajustées automatiquement selon la saison
@@ -150,34 +150,94 @@ def calc_ffmc(t, rh, w, r, prev):
     r: pluie (mm)
     prev: FFMC précédent
     """
+    # DEBUG: Vérification des entrées
+    if np.any(~np.isfinite(t)):
+        print(f"    ⚠️  calc_ffmc: température contient NaN/Inf")
+    if np.any(~np.isfinite(rh)):
+        print(f"    ⚠️  calc_ffmc: humidité contient NaN/Inf")
+    if np.any(~np.isfinite(w)):
+        print(f"    ⚠️  calc_ffmc: vent contient NaN/Inf")
+    if np.any(~np.isfinite(r)):
+        print(f"    ⚠️  calc_ffmc: pluie contient NaN/Inf")
+    if np.any(~np.isfinite(prev)):
+        print(f"    ⚠️  calc_ffmc: FFMC précédent contient NaN/Inf")
+    
+    # Protection contre valeurs extrêmes
+    prev = np.clip(prev, 0, 101)
+    rh = np.clip(rh, 1, 100)  # Éviter rh=0 (division par zéro)
+    t = np.clip(t, -50, 60)
+    w = np.clip(w, 0, 200)
+    r = np.clip(r, 0, None)
+    
     # Effet de la pluie
     mo = 147.2 * (101.0 - prev) / (59.5 + prev)
     
+    # Protection: si prev=101, mo=0
+    if np.any(~np.isfinite(mo)):
+        print(f"    ⚠️  calc_ffmc: mo contient NaN après calcul initial")
+    
     # Pluie > 0.5mm
-    mr = mo + 42.5 * r * np.exp(-100.0/(251.0-mo)) * (1.0 - np.exp(-6.93/r))
+    # Protection contre exp overflow
+    exp_term = np.clip(-100.0/(251.0-mo), -50, 50)
+    mr = mo + 42.5 * r * np.exp(exp_term) * (1.0 - np.exp(np.clip(-6.93/np.maximum(r, 0.001), -50, 50)))
+    
+    # Ajustement si pluie > 1.5mm
     mr = np.where(r > 1.5, mr + 0.0015 * (mo - 150.0)**2 * np.sqrt(r), mr)
-    prev = np.where(r > 0.5, 59.5 * (250.0 - np.minimum(mr, 250.0)) / (147.2 + np.minimum(mr, 250.0)), prev)
+    
+    # Clipping de mr pour éviter problèmes
+    mr = np.clip(mr, 0, 250)
+    
+    # Calcul nouveau FFMC après pluie
+    prev = np.where(r > 0.5, 59.5 * (250.0 - mr) / (147.2 + mr), prev)
+    
+    if np.any(~np.isfinite(prev)):
+        print(f"    ⚠️  calc_ffmc: prev contient NaN après effet pluie")
     
     # Séchage
     mo = 147.2 * (101.0 - prev) / (59.5 + prev)
     
     # Équilibre drying/wetting
-    ed = np.where(mo > 150,
-                  0.942 * rh**0.679 + 11.0*np.exp((rh-100.0)/10.0) + 0.18*(21.1-t)*(1.0-np.exp(-0.115*rh)),
-                  0.618 * rh**0.753 + 10.0*np.exp((rh-100.0)/10.0) + 0.18*(21.1-t)*(1.0-np.exp(-0.115*rh)))
+    # Protection contre overflow dans exp
+    exp_rh_term1 = np.clip((rh-100.0)/10.0, -50, 50)
+    exp_rh_term2 = np.clip(-0.115*rh, -50, 50)
     
-    ew = 0.618 * rh**0.753 + 10.0*np.exp((rh-100.0)/10.0) + 0.18*(21.1-t)*(1.0-np.exp(-0.115*rh))
+    ed = np.where(mo > 150,
+                  0.942 * rh**0.679 + 11.0*np.exp(exp_rh_term1) + 0.18*(21.1-t)*(1.0-np.exp(exp_rh_term2)),
+                  0.618 * rh**0.753 + 10.0*np.exp(exp_rh_term1) + 0.18*(21.1-t)*(1.0-np.exp(exp_rh_term2)))
+    
+    ew = 0.618 * rh**0.753 + 10.0*np.exp(exp_rh_term1) + 0.18*(21.1-t)*(1.0-np.exp(exp_rh_term2))
+    
+    if np.any(~np.isfinite(ed)) or np.any(~np.isfinite(ew)):
+        print(f"    ⚠️  calc_ffmc: ed ou ew contient NaN")
+        print(f"       rh range: [{np.min(rh)}, {np.max(rh)}]")
+        print(f"       t range: [{np.min(t)}, {np.max(t)}]")
     
     # Taux de séchage
     ko = 0.424*(1.0 - ((100.0-rh)/100.0)**1.7) + 0.0694*np.sqrt(w)*(1.0 - ((100.0-rh)/100.0)**8)
-    kd = ko * 0.581 * np.exp(0.0365*t)
+    kd = ko * 0.581 * np.exp(np.clip(0.0365*t, -50, 50))
+    
+    if np.any(~np.isfinite(kd)):
+        print(f"    ⚠️  calc_ffmc: kd contient NaN")
     
     # Moisture final
-    m = np.where(mo > ed,
-                 ed + (mo - ed) * 10**(-kd),
-                 ew - (ew - mo) * 10**(-kd))
+    # Protection contre 10**(-kd) qui peut donner 0 si kd est grand
+    dry_factor = np.clip(10**(-kd), 1e-10, 1.0)
     
-    return np.clip(59.5 * (250.0 - m) / (147.2 + m), 0, 101)
+    m = np.where(mo > ed,
+                 ed + (mo - ed) * dry_factor,
+                 ew - (ew - mo) * dry_factor)
+    
+    if np.any(~np.isfinite(m)):
+        print(f"    ⚠️  calc_ffmc: m contient NaN")
+    
+    # Calcul final FFMC
+    result = np.clip(59.5 * (250.0 - m) / (147.2 + m), 0, 101)
+    
+    if np.any(~np.isfinite(result)):
+        print(f"    ❌ calc_ffmc: RÉSULTAT FINAL contient NaN !")
+        print(f"       m range: [{np.min(m)}, {np.max(m)}]")
+    
+    return result
 
 def calc_dmc(t, rh, r, prev, month):
     """
@@ -188,30 +248,45 @@ def calc_dmc(t, rh, r, prev, month):
     prev: DMC précédent
     month: mois (1-12)
     """
+    # Protection des entrées
+    prev = np.clip(prev, 0, 400)
+    rh = np.clip(rh, 1, 100)
+    t = np.clip(t, -50, 60)
+    r = np.clip(r, 0, None)
+    
     # Effet de la pluie (re > 0 seulement si r > 1.5mm)
     re = 0.92 * r - 1.27
     
-    # Moisture content
-    Mo = 20.0 + np.exp(5.6348 - prev/43.43)
+    # Moisture content - Protection contre log de valeurs négatives
+    Mo = 20.0 + np.exp(np.clip(5.6348 - prev/43.43, -50, 50))
     
     # Slope variable
     b = np.where(prev <= 33,
                  100.0 / (0.5 + 0.3 * prev),
                  np.where(prev <= 65,
-                         14.0 - 1.3 * np.log(prev),
-                         6.2 * np.log(prev) - 17.2))
+                         14.0 - 1.3 * np.log(np.maximum(prev, 1)),
+                         6.2 * np.log(np.maximum(prev, 1)) - 17.2))
     
-    # Moisture after rain
-    Mr = Mo + 1000.0 * re / (48.77 + b * re)
-    Pr = 244.72 - 43.43 * np.log(Mr - 20.0)
+    # Moisture after rain - Protection division par zéro
+    denominator = np.maximum(48.77 + b * re, 0.1)
+    Mr = Mo + 1000.0 * re / denominator
+    
+    # Protection log de valeurs négatives
+    log_arg = np.maximum(Mr - 20.0, 0.1)
+    Pr = 244.72 - 43.43 * np.log(log_arg)
     
     # Appliquer effet pluie seulement si r > 1.5mm
-    prev_wet = np.where(r > 1.5, Pr, prev)
+    prev_wet = np.where(r > 1.5, np.clip(Pr, 0, 400), prev)
     
     # Séchage
     K = 1.894 * (t + 1.1) * (100.0 - rh) * DAY_LENGTH_45N[month-1] * 1e-6
     
-    return np.clip(prev_wet + 100.0 * K, 0, 400)
+    result = np.clip(prev_wet + 100.0 * K, 0, 400)
+    
+    if np.any(~np.isfinite(result)):
+        print(f"    ❌ calc_dmc: RÉSULTAT contient NaN")
+    
+    return result
 
 def calc_dc(t, r, prev, month):
     """
@@ -221,10 +296,18 @@ def calc_dc(t, r, prev, month):
     prev: DC précédent
     month: mois (1-12)
     """
+    # Protection des entrées
+    prev = np.clip(prev, 0, 1000)
+    t = np.clip(t, -50, 60)
+    r = np.clip(r, 0, None)
+    
     # Effet de la pluie (seulement si r > 2.8mm)
-    Qr = 800.0 * np.exp(-prev/400.0)
-    Dr = prev - 400.0 * np.log(1.0 + 3.937 * r / Qr)
-    Dr = np.where(r > 2.8, Dr, prev)
+    Qr = 800.0 * np.exp(np.clip(-prev/400.0, -50, 50))
+    
+    # Protection log de valeurs négatives/nulles
+    log_arg = np.maximum(1.0 + 3.937 * r / np.maximum(Qr, 0.1), 0.001)
+    Dr = prev - 400.0 * np.log(log_arg)
+    Dr = np.where(r > 2.8, np.clip(Dr, 0, 1000), prev)
     
     # Potentiel d'évapotranspiration
     V = np.where(t < -2.8, 
@@ -232,7 +315,12 @@ def calc_dc(t, r, prev, month):
                  0.36 * (t + 2.8) + DAY_FACTOR_45N[month-1])
     V = np.maximum(V, 0)
     
-    return np.clip(Dr + 0.5 * V, 0, 1000)
+    result = np.clip(Dr + 0.5 * V, 0, 1000)
+    
+    if np.any(~np.isfinite(result)):
+        print(f"    ❌ calc_dc: RÉSULTAT contient NaN")
+    
+    return result
 
 def calc_isi(w, ffmc):
     """
@@ -683,4 +771,3 @@ if __name__ == "__main__":
         import traceback
         traceback.print_exc()
         sys.exit(1)
-
