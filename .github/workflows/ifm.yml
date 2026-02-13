@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Récupération du code
-        uses: actions/checkout@v4  # Mise à jour v3 -> v4
+        uses: actions/checkout@v4
 
       - name: Installation librairie système (eccodes)
         run: |
@@ -23,13 +23,13 @@ jobs:
           sudo apt-get install -y libeccodes0 libeccodes-dev
 
       - name: Setup Python
-        uses: actions/setup-python@v5  # Mise à jour v4 -> v5
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
       - name: Installation dépendances
         run: |
-          pip install requests numpy pandas xarray cfgrib netCDF4
+          pip install requests numpy pandas xarray cfgrib netCDF4 rioxarray
 
       - name: Lancement du Calcul IFM
         env:
@@ -37,15 +37,19 @@ jobs:
           MF_CLIENT_SECRET: ${{ secrets.MF_CLIENT_SECRET }}
         run: python calcul_ifm.py
 
-      - name: Sauvegarde CSV (Artifact)
-        uses: actions/upload-artifact@v4  # <--- C'EST ICI LA CORRECTION (v3 -> v4)
+      - name: Sauvegarde CSV et NetCDF (Artifacts)
+        uses: actions/upload-artifact@v4
         with:
-          name: ifm-results
-          path: ifm_*.csv
-          overwrite: true  # Option utile en v4 pour écraser si besoin
+          name: ifm-results-${{ github.run_number }}
+          path: |
+            ifm_*.csv
+            netcdf_*.zip
+            export_netcdf/*.nc
+          retention-days: 30
+          overwrite: true
 
       - name: Commit et Push
         run: |
           git config --local user.name "GitHub Action"
-          git add ifm_*.csv
+          git add ifm_*.csv netcdf_*.zip
           git diff --quiet && git diff --staged --quiet || (git commit -m "Update IFM $(date +%Y-%m-%d_%H:%M)" && git push)
