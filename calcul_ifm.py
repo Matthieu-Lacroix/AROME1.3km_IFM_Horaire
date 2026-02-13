@@ -274,7 +274,7 @@ def class_ifm(fwi):
     return 'Extrême'
 
 def load_hour_data(hour):
-    """Charge les données GRIB pour une échéance"""
+    """Charge les données GRIB pour une échéance avec validation"""
     try:
         t = xr.open_dataset(Path('data_grib')/f'temp_H{hour:03d}.grib', engine='cfgrib').isel(
             latitude=slice(None,None,SUBSAMPLE), longitude=slice(None,None,SUBSAMPLE))
@@ -284,18 +284,55 @@ def load_hour_data(hour):
             latitude=slice(None,None,SUBSAMPLE), longitude=slice(None,None,SUBSAMPLE))
         
         ta = t.to_array().values[0]
-        if np.mean(ta) > 100: ta -= 273.15
+        
+        # Conversion Kelvin → Celsius si nécessaire
+        if np.mean(ta) > 100:
+            ta -= 273.15
+            print(f"  → Conversion K→°C pour H+{hour}")
+        
         ha = rh.to_array().values[0]
         wa = w.to_array().values[0] * 3.6 * 1.15  # m/s -> km/h
         
+        # Chargement pluie
         rain_file = Path('data_grib')/f'rain_H{hour:03d}.grib'
         ra = xr.open_dataset(rain_file, engine='cfgrib').isel(
             latitude=slice(None,None,SUBSAMPLE), longitude=slice(None,None,SUBSAMPLE)).to_array().values[0] \
             if hour > 0 and rain_file.exists() else np.zeros_like(ta)
         
+        # VALIDATION DES DONNÉES
+        issues = []
+        
+        # Température
+        if np.any(ta < -50) or np.any(ta > 60):
+            issues.append(f"Température hors limites: [{np.min(ta):.1f}, {np.max(ta):.1f}]°C")
+        
+        # Humidité
+        if np.any(ha < 0) or np.any(ha > 105):
+            issues.append(f"Humidité hors limites: [{np.min(ha):.1f}, {np.max(ha):.1f}]%")
+            # Correction forcée
+            ha = np.clip(ha, 0, 100)
+        
+        # Vent
+        if np.any(wa < 0) or np.any(wa > 200):
+            issues.append(f"Vent hors limites: [{np.min(wa):.1f}, {np.max(wa):.1f}] km/h")
+        
+        # Pluie
+        if np.any(ra < 0):
+            issues.append(f"Pluie négative détectée: min={np.min(ra):.2f} mm")
+            ra = np.clip(ra, 0, None)
+        
+        # NaN/Inf
+        if np.any(~np.isfinite(ta)) or np.any(~np.isfinite(ha)) or np.any(~np.isfinite(wa)) or np.any(~np.isfinite(ra)):
+            issues.append("Valeurs NaN/Inf détectées")
+            return None
+        
+        if issues:
+            print(f"  ⚠️  H+{hour:02d} - Problèmes corrigés: {', '.join(issues)}")
+        
         return ta, ha, wa, ra, t.latitude.values, t.longitude.values
+        
     except Exception as e:
-        print(f"⚠️  Erreur chargement H+{hour}: {e}")
+        print(f"  ❌ Erreur chargement H+{hour}: {e}")
         return None
 
 # ==================== MAIN ====================
@@ -355,7 +392,7 @@ def main():
         print(f"  Calcul H+{h:02d}...", end=' ')
         d = load_hour_data(h)
         if not d:
-            print("❌ Données manquantes")
+            print("❌ Données manquantes - SKIP")
             continue
         
         ta, ha, wa, ra, lats, lons = d
@@ -371,12 +408,34 @@ def main():
         bui = calc_bui(dmc, dc)
         fwi = calc_fwi(isi, bui)
         
+        # VALIDATION des indices calculés
+        validation_ok = True
+        
+        if np.any(~np.isfinite(ffmc)):
+            print("❌ FFMC contient NaN/Inf - SKIP")
+            validation_ok = False
+        
+        if np.any(~np.isfinite(fwi)):
+            print("❌ FWI contient NaN/Inf - SKIP")
+            validation_ok = False
+        
+        if np.any(fwi < 0) or np.any(fwi > 200):
+            print(f"⚠️  FWI hors limites: [{np.min(fwi):.2f}, {np.max(fwi):.2f}]")
+            # On continue mais on signale
+        
+        if not validation_ok:
+            continue
+        
         # Statistiques de l'échéance
-        print(f"IFM moyen={np.mean(fwi):.2f}, max={np.max(fwi):.2f}")
+        print(f"✓ T={np.mean(ta):.1f}°C, HR={np.mean(ha):.0f}%, FWI_moy={np.mean(fwi):.2f}, FWI_max={np.max(fwi):.2f}")
         
         # Stockage résultats
         for i in range(len(lats)):
             for j in range(len(lons)):
+                # Vérification supplémentaire par point
+                if not np.isfinite(fwi[i,j]) or fwi[i,j] < 0:
+                    continue  # Skip ce point
+                
                 results.append({
                     'run_date': DATE_RUN,
                     'echeance_h': h,
@@ -398,6 +457,10 @@ def main():
     
     # Export CSV
     df = pd.DataFrame(results)
+    
+    if len(df) == 0:
+        raise Exception("❌ Aucune donnée valide générée ! Vérifiez les téléchargements GRIB.")
+    
     csv_file = f"ifm_{DATE_RUN.replace(':', '').replace('-', '')}.csv"
     df.to_csv(csv_file, index=False, float_format='%.2f')
     
@@ -407,14 +470,22 @@ def main():
     print(f"Points calculés: {len(df):,}")
     print(f"Échéances: {df['echeance_h'].nunique()}")
     print(f"Période: {df['date_prevision'].min()} → {df['date_prevision'].max()}")
+    
+    # DIAGNOSTICS DÉTAILLÉS
+    print(f"\n🔍 DIAGNOSTICS PAR VARIABLE:")
+    print(f"   Température   : [{df['temperature_c'].min():.1f}, {df['temperature_c'].max():.1f}] °C (moy: {df['temperature_c'].mean():.1f})")
+    print(f"   Humidité      : [{df['humidite_percent'].min():.1f}, {df['humidite_percent'].max():.1f}] % (moy: {df['humidite_percent'].mean():.1f})")
+    print(f"   Vent          : [{df['vent_kmh'].min():.1f}, {df['vent_kmh'].max():.1f}] km/h (moy: {df['vent_kmh'].mean():.1f})")
+    print(f"   Pluie         : [{df['pluie_mm'].min():.2f}, {df['pluie_mm'].max():.2f}] mm (cumul: {df['pluie_mm'].sum():.2f})")
+    
     print(f"\n🔥 Indices FWI moyens (dernière échéance):")
     last_h = df[df['echeance_h'] == df['echeance_h'].max()]
-    print(f"   FFMC: {last_h['ffmc'].mean():.2f}")
-    print(f"   DMC:  {last_h['dmc'].mean():.2f}")
-    print(f"   DC:   {last_h['dc'].mean():.2f}")
-    print(f"   ISI:  {last_h['isi'].mean():.2f}")
-    print(f"   BUI:  {last_h['bui'].mean():.2f}")
-    print(f"   IFM:  {last_h['ifm'].mean():.2f} (max: {last_h['ifm'].max():.2f})")
+    print(f"   FFMC: [{last_h['ffmc'].min():.1f}, {last_h['ffmc'].max():.1f}] (moy: {last_h['ffmc'].mean():.2f})")
+    print(f"   DMC:  [{last_h['dmc'].min():.1f}, {last_h['dmc'].max():.1f}] (moy: {last_h['dmc'].mean():.2f})")
+    print(f"   DC:   [{last_h['dc'].min():.1f}, {last_h['dc'].max():.1f}] (moy: {last_h['dc'].mean():.2f})")
+    print(f"   ISI:  [{last_h['isi'].min():.1f}, {last_h['isi'].max():.1f}] (moy: {last_h['isi'].mean():.2f})")
+    print(f"   BUI:  [{last_h['bui'].min():.1f}, {last_h['bui'].max():.1f}] (moy: {last_h['bui'].mean():.2f})")
+    print(f"   IFM:  [{last_h['ifm'].min():.1f}, {last_h['ifm'].max():.1f}] (moy: {last_h['ifm'].mean():.2f})")
     print(f"\n⚠️  Danger maximal: {df.loc[df['ifm'].idxmax(), 'danger']}")
     print(f"📁 Fichier CSV: {csv_file}")
     
