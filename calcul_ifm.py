@@ -34,7 +34,7 @@ BASE_URL = "https://public-api.meteofrance.fr/public/arome/1.0/wcs/MF-NWP-HIGHRE
 
 ZONE = {'lat': (44.0, 46.5), 'long': (2.5, 7.5), 'name': 'Auvergne-Rhône-Alpes'}
 MAX_HOURS = 36
-SUBSAMPLE = 1
+SUBSAMPLE = 3
 
 # Valeurs initiales adaptées pour la France (printemps/été)
 # Ces valeurs seront ajustées automatiquement selon la saison
@@ -328,9 +328,25 @@ def calc_isi(w, ffmc):
     w: vitesse du vent (km/h)
     ffmc: Fine Fuel Moisture Code
     """
+    # Protection des entrées
+    w = np.clip(w, 0, 200)
+    ffmc = np.clip(ffmc, 0, 101)
+    
     mo = 147.2 * (101.0 - ffmc) / (59.5 + ffmc)
-    ff = 19.115 * np.exp(-0.1386*mo) * (1.0 + mo**5.31/49300000.0)
-    return ff * np.exp(0.05039*w)
+    
+    # Protection overflow dans exp
+    exp_term = np.clip(-0.1386*mo, -50, 50)
+    ff = 19.115 * np.exp(exp_term) * (1.0 + mo**5.31/49300000.0)
+    
+    result = ff * np.exp(np.clip(0.05039*w, -50, 50))
+    
+    # Clipping final
+    result = np.clip(result, 0, 100)
+    
+    if np.any(~np.isfinite(result)):
+        print(f"    ❌ calc_isi: RÉSULTAT contient NaN")
+    
+    return result
 
 def calc_bui(dmc, dc):
     """
@@ -338,9 +354,26 @@ def calc_bui(dmc, dc):
     dmc: Duff Moisture Code
     dc: Drought Code
     """
-    return np.where(dmc <= 0.4*dc,
-                    0.8*dmc*dc/(dmc+0.4*dc),
-                    dmc - (1.0-0.8*dc/(dmc+0.4*dc))*(0.92+(0.0114*dmc)**1.7))
+    # Protection des entrées
+    dmc = np.clip(dmc, 0, 400)
+    dc = np.clip(dc, 0, 1000)
+    
+    # Protection division par zéro : dmc + 0.4*dc ne doit jamais être 0
+    denominator = np.maximum(dmc + 0.4*dc, 0.1)
+    
+    result = np.where(dmc <= 0.4*dc,
+                      0.8*dmc*dc / denominator,
+                      dmc - (1.0 - 0.8*dc / denominator) * (0.92 + (0.0114*dmc)**1.7))
+    
+    # Clipping pour éviter valeurs négatives ou aberrantes
+    result = np.clip(result, 0, 500)
+    
+    if np.any(~np.isfinite(result)):
+        print(f"    ❌ calc_bui: RÉSULTAT contient NaN")
+        print(f"       DMC: [{np.min(dmc):.2f}, {np.max(dmc):.2f}]")
+        print(f"       DC: [{np.min(dc):.2f}, {np.max(dc):.2f}]")
+    
+    return result
 
 def calc_fwi(isi, bui):
     """
@@ -348,11 +381,34 @@ def calc_fwi(isi, bui):
     isi: Initial Spread Index
     bui: Buildup Index
     """
+    # Protection des entrées
+    isi = np.clip(isi, 0, 100)
+    bui = np.clip(bui, 0, 500)
+    
+    # Calcul de fD avec protection
     fD = np.where(bui <= 80, 
                   0.626*bui**0.809 + 2.0, 
-                  1000.0/(25.0 + 108.64*np.exp(-0.023*bui)))
+                  1000.0 / np.maximum(25.0 + 108.64*np.exp(np.clip(-0.023*bui, -50, 50)), 1.0))
+    
     B = 0.1 * isi * fD
-    return np.where(B > 1, np.exp(2.72 * (0.434*np.log(B))**0.647), B)
+    
+    # Protection pour le log
+    log_arg = np.maximum(B, 0.001)
+    
+    result = np.where(B > 1, 
+                      np.exp(np.clip(2.72 * (0.434*np.log(log_arg))**0.647, -50, 50)), 
+                      B)
+    
+    # Clipping final
+    result = np.clip(result, 0, 200)
+    
+    if np.any(~np.isfinite(result)):
+        print(f"    ❌ calc_fwi: RÉSULTAT contient NaN")
+        print(f"       ISI: [{np.min(isi):.2f}, {np.max(isi):.2f}]")
+        print(f"       BUI: [{np.min(bui):.2f}, {np.max(bui):.2f}]")
+        print(f"       B: [{np.min(B):.2f}, {np.max(B):.2f}]")
+    
+    return result
 
 def class_ifm(fwi):
     """Classifie le niveau de danger IFM"""
@@ -489,23 +545,37 @@ def main():
         
         # Calcul des indices dans l'ordre correct
         ffmc = calc_ffmc(ta, ha, wa, ra, ffmc)
+        if np.any(~np.isfinite(ffmc)):
+            print("❌ FFMC génère NaN - SKIP")
+            continue
+        
         dmc = calc_dmc(ta, ha, ra, dmc, month)
+        if np.any(~np.isfinite(dmc)):
+            print(f"❌ DMC génère NaN - SKIP (range avant: [{np.min(dmc):.2f}, {np.max(dmc):.2f}])")
+            continue
+        
         dc = calc_dc(ta, ra, dc, month)
+        if np.any(~np.isfinite(dc)):
+            print(f"❌ DC génère NaN - SKIP (range avant: [{np.min(dc):.2f}, {np.max(dc):.2f}])")
+            continue
         
         isi = calc_isi(wa, ffmc)
+        if np.any(~np.isfinite(isi)):
+            print("❌ ISI génère NaN - SKIP")
+            continue
+        
         bui = calc_bui(dmc, dc)
+        if np.any(~np.isfinite(bui)):
+            print(f"❌ BUI génère NaN - SKIP (DMC: [{np.min(dmc):.2f}, {np.max(dmc):.2f}], DC: [{np.min(dc):.2f}, {np.max(dc):.2f}])")
+            continue
+        
         fwi = calc_fwi(isi, bui)
-        
-        # VALIDATION des indices calculés
-        validation_ok = True
-        
-        if np.any(~np.isfinite(ffmc)):
-            print("❌ FFMC contient NaN/Inf - SKIP")
-            validation_ok = False
-        
         if np.any(~np.isfinite(fwi)):
-            print("❌ FWI contient NaN/Inf - SKIP")
-            validation_ok = False
+            print(f"❌ FWI génère NaN - SKIP (ISI: [{np.min(isi):.2f}, {np.max(isi):.2f}], BUI: [{np.min(bui):.2f}, {np.max(bui):.2f}])")
+            continue
+        
+        # VALIDATION globale (au cas où)
+        validation_ok = True
         
         if np.any(fwi < 0) or np.any(fwi > 200):
             print(f"⚠️  FWI hors limites: [{np.min(fwi):.2f}, {np.max(fwi):.2f}]")
@@ -771,4 +841,3 @@ if __name__ == "__main__":
         import traceback
         traceback.print_exc()
         sys.exit(1)
-
