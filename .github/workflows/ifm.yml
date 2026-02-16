@@ -44,13 +44,30 @@ jobs:
           path: |
             ifm_*.csv
             netcdf_*.zip
-            export_netcdf/*.nc
           retention-days: 30
-          overwrite: true
 
-      - name: Commit et Push
+      - name: Création fichier résumé léger
+        run: |
+          # Créer un résumé avec seulement les stats (quelques KB)
+          echo "# IFM Results - $(date +%Y-%m-%d_%H:%M)" > results_summary.md
+          echo "" >> results_summary.md
+          echo "## Run Information" >> results_summary.md
+          echo "- Date: $(date -Iseconds)" >> results_summary.md
+          echo "- Files generated:" >> results_summary.md
+          ls -lh ifm_*.csv netcdf_*.zip | awk '{print "  - " $9 " (" $5 ")"}' >> results_summary.md
+          echo "" >> results_summary.md
+          echo "## Statistics" >> results_summary.md
+          # Extraire quelques stats du CSV
+          if [ -f ifm_*.csv ]; then
+            echo "- Total points: $(tail -n +2 ifm_*.csv | wc -l)" >> results_summary.md
+            echo "- Time range: $(tail -n +2 ifm_*.csv | head -1 | cut -d',' -f3) to $(tail -n +2 ifm_*.csv | tail -1 | cut -d',' -f3)" >> results_summary.md
+          fi
+          echo "" >> results_summary.md
+          echo "📦 Download full data from GitHub Actions Artifacts" >> results_summary.md
+
+      - name: Commit résumé léger
         run: |
           git config --local user.name "GitHub Action"
           git config --local user.email "action@github.com"
-          git add ifm_*.csv netcdf_*.zip
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update IFM $(date +%Y-%m-%d_%H:%M)" && git push)
+          git add results_summary.md
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update IFM summary $(date +%Y-%m-%d_%H:%M)" && git push)
