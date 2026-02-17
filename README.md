@@ -1,3 +1,5 @@
+EN COURS DE TEST NE PAS UTILISER ENCORE MERCI BEAUCOUP (17/02/2026)
+
 🔥 Calcul Automatique IFM (Indice Forêt Météo) - AROME 1.3km
 
 
