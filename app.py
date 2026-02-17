@@ -253,113 +253,135 @@ html, body, [class*="css"] {
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────
-#  CHARGEMENT DES DONNÉES
-# ─────────────────────────────────────────────────────────────
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_data():
     """
-    Charge le NetCDF depuis GitHub via l'API (supporte les fichiers > 50 Mo).
+    Charge le NetCDF AROME depuis GitHub (supporte Git LFS).
+    Ecrit toujours sur disque temporaire (netCDF4 n'accepte pas BytesIO).
 
-    Priorité :
-      1. Fichier local  → si 'arome_fwi_complet.nc' existe à côté du script
-      2. API GitHub     → avec token (st.secrets["GITHUB_TOKEN"] ou variable d'env)
-      3. API GitHub     → sans token (rate-limit strict, déconseillé en prod)
-
-    Configuration dans .streamlit/secrets.toml :
-      GITHUB_TOKEN = "ghp_xxxxxxxxxxxxxxxxxxxx"
-
-    Ou dans Streamlit Community Cloud :
-      Settings → Secrets → ajouter GITHUB_TOKEN
+    Secrets Streamlit : GITHUB_TOKEN = "ghp_xxx..."
     """
+    import os, tempfile
 
-    REPO    = "Matthieu-Lacroix/AROME1.3km_IFM_Horaire"
-    BRANCH  = "main"
-    NCFILE  = "arome_fwi_complet.nc"
+    REPO   = "Matthieu-Lacroix/AROME1.3km_IFM_Horaire"
+    BRANCH = "main"
+    NCFILE = "arome_fwi_complet.nc"
 
-    # ── 1. Fichier local (déploiement avec le fichier dans le repo) ──────────
-    import os
-    local_path = os.path.join(os.path.dirname(__file__), NCFILE)
-    if os.path.exists(local_path):
-        try:
-            return xr.open_dataset(local_path, engine="netcdf4")
-        except Exception as e:
-            st.warning(f"Fichier local trouvé mais illisible : {e}")
-
-    # ── 2. Récupérer le token GitHub ─────────────────────────────────────────
+    # ── Token ────────────────────────────────────────────────────────────────
     token = None
-    try:
-        token = st.secrets["GITHUB_TOKEN"]
-    except Exception:
+    try:    token = st.secrets["GITHUB_TOKEN"]
+    except Exception: pass
+    if not token:
         token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        st.warning("GITHUB_TOKEN absent — risque de rate-limit.")
 
-    headers = {"Accept": "application/vnd.github.v3.raw"}
-    if token:
-        headers["Authorization"] = f"token {token}"
-    else:
-        st.warning("⚠️ Aucun GITHUB_TOKEN trouvé — rate limit strict (60 req/h).")
+    auth = {"Authorization": f"token {token}"} if token else {}
 
-    # ── 3. Téléchargement via API GitHub (supporte > 50 Mo) ──────────────────
-    api_url = f"https://api.github.com/repos/{REPO}/contents/{NCFILE}?ref={BRANCH}"
+    # ── Helper : ouvrir un .nc sur disque avec fallback d'engines ────────────
+    def open_nc(path):
+        for engine in ["netcdf4", "h5netcdf", "scipy"]:
+            try:
+                return xr.open_dataset(path, engine=engine)
+            except Exception:
+                continue
+        raise RuntimeError("Aucun engine xarray n'a pu lire le fichier.")
 
+    # ── Helper : téléchargement streaming → fichier temporaire ───────────────
+    def stream_to_tmp(url, headers, size_hint=0):
+        tmp = tempfile.NamedTemporaryFile(suffix=".nc", delete=False)
+        progress = st.progress(0, text="Téléchargement en cours…")
+        downloaded = 0
+        try:
+            r = requests.get(url, headers=headers, stream=True, timeout=300)
+            r.raise_for_status()
+            for chunk in r.iter_content(chunk_size=512 * 1024):
+                tmp.write(chunk)
+                downloaded += len(chunk)
+                if size_hint > 0:
+                    pct = min(int(downloaded / size_hint * 100), 99)
+                    mo_done = downloaded / 1024 / 1024
+                    mo_tot  = size_hint  / 1024 / 1024
+                    progress.progress(pct, text=f"Téléchargement {mo_done:.0f} / {mo_tot:.0f} Mo…")
+            tmp.flush(); tmp.close()
+            progress.progress(100, text="Téléchargement terminé ✅"); progress.empty()
+            return tmp.name
+        except Exception as e:
+            tmp.close()
+            try: os.unlink(tmp.name)
+            except Exception: pass
+            raise e
+
+    # ── 1. Fichier local Streamlit Cloud ─────────────────────────────────────
+    #    Si c'est un pointeur LFS il fait < 200 octets → on l'ignore
+    for local_path in [
+        f"/mount/src/{REPO.split('/')[-1].lower()}/{NCFILE}",
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), NCFILE),
+    ]:
+        if os.path.exists(local_path) and os.path.getsize(local_path) > 1000:
+            try:
+                return open_nc(local_path)
+            except Exception as e:
+                st.warning(f"Fichier local illisible ({e}) → téléchargement…")
+
+    # ── 2. API GitHub : récupérer les métadonnées du fichier ─────────────────
+    meta_url = f"https://api.github.com/repos/{REPO}/contents/{NCFILE}?ref={BRANCH}"
     try:
-        # Étape A : récupérer les métadonnées (taille, download_url, LFS)
-        meta_r = requests.get(api_url, headers={**headers,
-                              "Accept": "application/vnd.github.v3+json"},
-                              timeout=15)
+        meta_r = requests.get(
+            meta_url,
+            headers={**auth, "Accept": "application/vnd.github.v3+json"},
+            timeout=20,
+        )
         meta_r.raise_for_status()
         meta = meta_r.json()
-
-        file_size = meta.get("size", 0)
-        dl_url    = meta.get("download_url")
-        encoding  = meta.get("encoding", "")
-
-        # Étape B : si fichier Git LFS → download_url pointe vers le vrai contenu
-        if dl_url:
-            r = requests.get(dl_url, headers=headers, timeout=120,
-                             stream=True)
-            r.raise_for_status()
-
-            # Lecture en streaming pour les gros fichiers
-            buf = io.BytesIO()
-            downloaded = 0
-            progress = st.progress(0, text="Chargement du NetCDF…")
-            for chunk in r.iter_content(chunk_size=1024 * 256):  # 256 Ko
-                buf.write(chunk)
-                downloaded += len(chunk)
-                if file_size > 0:
-                    pct = min(int(downloaded / file_size * 100), 100)
-                    progress.progress(pct, text=f"Chargement… {downloaded//1024//1024} Mo / {file_size//1024//1024} Mo")
-            progress.empty()
-
-            buf.seek(0)
-            ds = xr.open_dataset(buf, engine="netcdf4")
-            return ds
-
-        # Étape C : contenu base64 inline (fichiers < 1 Mo, normalement pas le cas)
-        elif encoding == "base64":
-            import base64
-            content = base64.b64decode(meta["content"])
-            ds = xr.open_dataset(io.BytesIO(content), engine="netcdf4")
-            return ds
-
-        else:
-            st.error("Format de réponse GitHub inattendu.")
-            return None
-
-    except requests.exceptions.Timeout:
-        st.error("⏱️ Timeout : le fichier met trop de temps à se télécharger (> 2 min).")
-        return None
     except requests.exceptions.HTTPError as e:
-        status = e.response.status_code if e.response else "?"
-        if status == 403:
-            st.error("🔒 GitHub API : accès refusé (rate limit ou token invalide).")
-        elif status == 404:
-            st.error(f"❌ Fichier introuvable : {REPO}/{NCFILE} sur {BRANCH}")
-        else:
-            st.error(f"❌ Erreur HTTP {status} : {e}")
+        code = e.response.status_code if e.response else "?"
+        msgs = {403: "Accès refusé — vérifiez GITHUB_TOKEN dans Secrets.",
+                404: f"Fichier introuvable : {REPO}/{NCFILE}"}
+        st.error(f"❌ GitHub API {code} : {msgs.get(code, str(e))}")
         return None
     except Exception as e:
-        st.error(f"❌ Erreur inattendue : {e}")
+        st.error(f"❌ Erreur réseau : {e}")
+        return None
+
+    file_size = meta.get("size", 0)
+    dl_url    = meta.get("download_url")
+
+    # ── 3. Fichier Git LFS : download_url = None ou size minuscule ───────────
+    #    → passer par media.githubusercontent.com qui sert le vrai contenu LFS
+    if not dl_url or file_size < 500:
+        lfs_url = (f"https://media.githubusercontent.com/media/"
+                   f"{REPO}/{BRANCH}/{NCFILE}")
+        st.info("🔄 Fichier Git LFS détecté → téléchargement via media.githubusercontent.com")
+        try:
+            tmp_path = stream_to_tmp(
+                lfs_url,
+                {**auth, "Accept": "application/octet-stream"},
+                size_hint=76 * 1024 * 1024,
+            )
+            ds = open_nc(tmp_path)
+            os.unlink(tmp_path)
+            return ds
+        except Exception as e:
+            st.error(f"❌ Échec téléchargement LFS : {e}")
+            return None
+
+    # ── 4. Fichier normal (< 100 Mo, pas LFS) ────────────────────────────────
+    try:
+        tmp_path = stream_to_tmp(
+            dl_url,
+            {**auth, "Accept": "application/octet-stream"},
+            size_hint=file_size,
+        )
+        ds = open_nc(tmp_path)
+        os.unlink(tmp_path)
+        return ds
+    except requests.exceptions.Timeout:
+        st.error("⏱️ Timeout (> 5 min). Réessayez.")
+        return None
+    except Exception as e:
+        st.error(f"❌ Erreur téléchargement/lecture : {e}")
         return None
 
 # ─────────────────────────────────────────────────────────────
