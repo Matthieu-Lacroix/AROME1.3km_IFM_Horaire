@@ -43,9 +43,10 @@ jobs:
           name: ifm-results-${{ github.run_number }}
           path: |
             ifm_*.csv
-            netcdf_*.zip
-          retention-days: 30
-
+            netcdf_*.zip       
+            retention-days: 30          
+            overwrite: true
+            
       - name: Création fichier résumé léger
         run: |
           # Créer un résumé avec seulement les stats (quelques KB)
@@ -69,5 +70,7 @@ jobs:
         run: |
           git config --local user.name "GitHub Action"
           git config --local user.email "action@github.com"
+          git add netcdf_*.zip
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update IFM $(date +%Y-%m-%d_%H:%M)" && git push)
           git add results_summary.md
           git diff --quiet && git diff --staged --quiet || (git commit -m "Update IFM summary $(date +%Y-%m-%d_%H:%M)" && git push)
