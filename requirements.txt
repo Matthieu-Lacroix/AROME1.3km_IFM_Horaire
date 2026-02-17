@@ -1,0 +1,7 @@
+streamlit
+xarray
+netcdf4
+pandas
+plotly
+requests
+h5netcdf
