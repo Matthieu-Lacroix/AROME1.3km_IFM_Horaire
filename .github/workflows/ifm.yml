@@ -47,30 +47,17 @@ jobs:
             retention-days: 30          
             overwrite: true
             
-      - name: Création fichier résumé léger
-        run: |
-          # Créer un résumé avec seulement les stats (quelques KB)
-          echo "# IFM Results - $(date +%Y-%m-%d_%H:%M)" > results_summary.md
-          echo "" >> results_summary.md
-          echo "## Run Information" >> results_summary.md
-          echo "- Date: $(date -Iseconds)" >> results_summary.md
-          echo "- Files generated:" >> results_summary.md
-          ls -lh ifm_*.csv netcdf_*.zip | awk '{print "  - " $9 " (" $5 ")"}' >> results_summary.md
-          echo "" >> results_summary.md
-          echo "## Statistics" >> results_summary.md
-          # Extraire quelques stats du CSV
-          if [ -f ifm_*.csv ]; then
-            echo "- Total points: $(tail -n +2 ifm_*.csv | wc -l)" >> results_summary.md
-            echo "- Time range: $(tail -n +2 ifm_*.csv | head -1 | cut -d',' -f3) to $(tail -n +2 ifm_*.csv | tail -1 | cut -d',' -f3)" >> results_summary.md
-          fi
-          echo "" >> results_summary.md
-          echo "📦 Download full data from GitHub Actions Artifacts" >> results_summary.md
-
-      - name: Commit résumé léger
+      - name: Commit du fichier NetCDF complet
         run: |
           git config --local user.name "GitHub Action"
           git config --local user.email "action@github.com"
-          git add netcdf_*.zip
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update IFM $(date +%Y-%m-%d_%H:%M)" && git push)
-          git add results_summary.md
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update IFM summary $(date +%Y-%m-%d_%H:%M)" && git push)
+          
+          # On ne veut garder que le fichier complet à la racine ou dans un dossier fixe
+          # On déplace le fichier pour qu'il ait toujours le même nom (écrasement de l'ancien)
+          cp export_netcdf/arome_fwi_complet.nc arome_fwi_complet.nc
+          
+          # On ajoute uniquement le fichier .nc fixe et le résumé
+          git add arome_fwi_complet.nc results_summary.md
+          
+          # On commit seulement s'il y a des changements
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update IFM Data $(date +%Y-%m-%d_%H:%M)" && git push)
