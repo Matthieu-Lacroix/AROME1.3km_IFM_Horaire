@@ -257,13 +257,109 @@ html, body, [class*="css"] {
 # ─────────────────────────────────────────────────────────────
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_data():
-    url = "https://raw.githubusercontent.com/VOTRE_USER/VOTRE_REPO/main/arome_fwi_complet.nc"
+    """
+    Charge le NetCDF depuis GitHub via l'API (supporte les fichiers > 50 Mo).
+
+    Priorité :
+      1. Fichier local  → si 'arome_fwi_complet.nc' existe à côté du script
+      2. API GitHub     → avec token (st.secrets["GITHUB_TOKEN"] ou variable d'env)
+      3. API GitHub     → sans token (rate-limit strict, déconseillé en prod)
+
+    Configuration dans .streamlit/secrets.toml :
+      GITHUB_TOKEN = "ghp_xxxxxxxxxxxxxxxxxxxx"
+
+    Ou dans Streamlit Community Cloud :
+      Settings → Secrets → ajouter GITHUB_TOKEN
+    """
+
+    REPO    = "Matthieu-Lacroix/AROME1.3km_IFM_Horaire"
+    BRANCH  = "main"
+    NCFILE  = "arome_fwi_complet.nc"
+
+    # ── 1. Fichier local (déploiement avec le fichier dans le repo) ──────────
+    import os
+    local_path = os.path.join(os.path.dirname(__file__), NCFILE)
+    if os.path.exists(local_path):
+        try:
+            return xr.open_dataset(local_path, engine="netcdf4")
+        except Exception as e:
+            st.warning(f"Fichier local trouvé mais illisible : {e}")
+
+    # ── 2. Récupérer le token GitHub ─────────────────────────────────────────
+    token = None
     try:
-        r = requests.get(url, timeout=30)
-        r.raise_for_status()
-        ds = xr.open_dataset(io.BytesIO(r.content), engine="netcdf4")
-        return ds
+        token = st.secrets["GITHUB_TOKEN"]
+    except Exception:
+        token = os.environ.get("GITHUB_TOKEN")
+
+    headers = {"Accept": "application/vnd.github.v3.raw"}
+    if token:
+        headers["Authorization"] = f"token {token}"
+    else:
+        st.warning("⚠️ Aucun GITHUB_TOKEN trouvé — rate limit strict (60 req/h).")
+
+    # ── 3. Téléchargement via API GitHub (supporte > 50 Mo) ──────────────────
+    api_url = f"https://api.github.com/repos/{REPO}/contents/{NCFILE}?ref={BRANCH}"
+
+    try:
+        # Étape A : récupérer les métadonnées (taille, download_url, LFS)
+        meta_r = requests.get(api_url, headers={**headers,
+                              "Accept": "application/vnd.github.v3+json"},
+                              timeout=15)
+        meta_r.raise_for_status()
+        meta = meta_r.json()
+
+        file_size = meta.get("size", 0)
+        dl_url    = meta.get("download_url")
+        encoding  = meta.get("encoding", "")
+
+        # Étape B : si fichier Git LFS → download_url pointe vers le vrai contenu
+        if dl_url:
+            r = requests.get(dl_url, headers=headers, timeout=120,
+                             stream=True)
+            r.raise_for_status()
+
+            # Lecture en streaming pour les gros fichiers
+            buf = io.BytesIO()
+            downloaded = 0
+            progress = st.progress(0, text="Chargement du NetCDF…")
+            for chunk in r.iter_content(chunk_size=1024 * 256):  # 256 Ko
+                buf.write(chunk)
+                downloaded += len(chunk)
+                if file_size > 0:
+                    pct = min(int(downloaded / file_size * 100), 100)
+                    progress.progress(pct, text=f"Chargement… {downloaded//1024//1024} Mo / {file_size//1024//1024} Mo")
+            progress.empty()
+
+            buf.seek(0)
+            ds = xr.open_dataset(buf, engine="netcdf4")
+            return ds
+
+        # Étape C : contenu base64 inline (fichiers < 1 Mo, normalement pas le cas)
+        elif encoding == "base64":
+            import base64
+            content = base64.b64decode(meta["content"])
+            ds = xr.open_dataset(io.BytesIO(content), engine="netcdf4")
+            return ds
+
+        else:
+            st.error("Format de réponse GitHub inattendu.")
+            return None
+
+    except requests.exceptions.Timeout:
+        st.error("⏱️ Timeout : le fichier met trop de temps à se télécharger (> 2 min).")
+        return None
+    except requests.exceptions.HTTPError as e:
+        status = e.response.status_code if e.response else "?"
+        if status == 403:
+            st.error("🔒 GitHub API : accès refusé (rate limit ou token invalide).")
+        elif status == 404:
+            st.error(f"❌ Fichier introuvable : {REPO}/{NCFILE} sur {BRANCH}")
+        else:
+            st.error(f"❌ Erreur HTTP {status} : {e}")
+        return None
     except Exception as e:
+        st.error(f"❌ Erreur inattendue : {e}")
         return None
 
 # ─────────────────────────────────────────────────────────────
