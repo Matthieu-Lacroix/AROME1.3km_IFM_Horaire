@@ -28,7 +28,7 @@ st.markdown("""
 @st.cache_data(ttl=3600)
 def load_data():
     # Remplacez par votre URL brute GitHub
-    url = "https://raw.githubusercontent.com/VOTRE_USER/VOTRE_REPO/main/arome_fwi_complet.nc"
+    url = "https://raw.githubusercontent.com/Matthieu-Lacroix/AROME1.3km_IFM_Horaire/main/arome_fwi_complet.nc"
     response = requests.get(url)
     if response.status_code == 200:
         # Utilisation de BytesIO pour lire le NetCDF en mémoire
@@ -111,4 +111,5 @@ with tab2:
         st.plotly_chart(fig_meteo, use_container_width=True)
 
     st.markdown("---")
+
     st.dataframe(df_mean[['ifm', 'temp', 'wind', 'hr', 'rain']].style.background_gradient(cmap='YlOrRd'))
