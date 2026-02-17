@@ -658,179 +658,58 @@ def main():
     print(f"{'='*60}\n")
     
     # =============================================================================
-    # EXPORT NETCDF SPATIO-TEMPOREL COMPATIBLE QGIS (CF-Conventions)
+    # EXPORT NETCDF OPTIMISÉ (POUR GITHUB < 100MO)
     # =============================================================================
-    
-    print("🗺️  Génération des cubes NetCDF compatibles QGIS...")
-    
+    print("\n🗺️  Génération du cube NetCDF optimisé pour le dashboard...")
     try:
-        import zipfile
-        
-        # 1. Préparation des données avec renommage pour QGIS
-        # QGIS exige que la dimension temporelle s'appelle exactement "time"
+        # 1. Préparation des données et renommage standard
         df_nc = df.copy()
         df_nc['time'] = pd.to_datetime(df_nc['date_prevision'])
-        
-        # Sélection des variables à exporter
-        cols = ['time', 'latitude', 'longitude', 'ifm', 'temperature_c', 'vent_kmh', 
-                'humidite_percent', 'pluie_mm', 'ffmc', 'dmc', 'dc', 'isi', 'bui']
-        df_nc = df_nc[cols].copy()
-        
-        # Renommage pour cohérence
         df_nc = df_nc.rename(columns={
-            'latitude': 'lat',
-            'longitude': 'lon',
-            'temperature_c': 'temp',
-            'vent_kmh': 'wind',
-            'humidite_percent': 'hr',
+            'latitude': 'lat', 
+            'longitude': 'lon', 
+            'temperature_c': 'temp', 
+            'vent_kmh': 'wind', 
+            'humidite_percent': 'hr', 
             'pluie_mm': 'rain'
         })
         
-        # 2. Création du cube 3D (Xarray)
-        df_nc = df_nc.set_index(['time', 'lat', 'lon'])
-        ds_complet = df_nc.to_xarray()
+        # Sélection des colonnes scientifiques
+        cols = ['time', 'lat', 'lon', 'ifm', 'temp', 'wind', 'hr', 'rain', 'ffmc', 'dmc', 'dc', 'isi', 'bui']
+        ds_complet = df_nc[cols].set_index(['time', 'lat', 'lon']).to_xarray()
+
+        # 2. Ajout des métadonnées CF-Conventions (utile pour QGIS)
+        ds_complet['lat'].attrs = {'units': 'degrees_north', 'standard_name': 'latitude'}
+        ds_complet['lon'].attrs = {'units': 'degrees_east', 'standard_name': 'longitude'}
+        ds_complet['time'].attrs = {'standard_name': 'time'}
+        ds_complet['ifm'].attrs = {'long_name': 'Indice Foret Meteo', 'units': '1'}
+
+        # 3. ⚡ OPTIMISATION : Conversion en Float32 (Indispensable pour le poids)
+        for var in ds_complet.data_vars:
+            ds_complet[var] = ds_complet[var].astype('float32')
+
+        # 4. ⚡ COMPRESSION : Encodage zlib pour chaque variable
+        # complevel 5 est le meilleur compromis vitesse/taille
+        encoding = {var: {"zlib": True, "complevel": 5} for var in ds_complet.data_vars}
+
+        # 5. Export du fichier unique à la racine (plus de sous-dossier, plus de zip)
+        fichier_complet = Path("arome_fwi_complet.nc")
+        ds_complet.to_netcdf(fichier_complet, format='NETCDF4', engine='netcdf4', encoding=encoding)
+
+        # 6. 🚨 VÉRIFICATION DE LA TAILLE
+        size_mo = fichier_complet.stat().st_size / (1024 * 1024)
+        print(f"✅ NetCDF créé : {fichier_complet.name}")
+        print(f"📊 Taille finale : {size_mo:.2f} Mo")
+
+        if size_mo > 98:
+            print(f"⚠️  ALERTE : Taille critique ({size_mo:.2f} Mo). GitHub risque de rejeter le fichier.")
         
-        # 3. 🪄 LE SECRET POUR QGIS : Les métadonnées CF-Conventions
-        ds_complet['time'].attrs.update({
-            'standard_name': 'time',
-            'long_name': 'time',
-            'axis': 'T'
-        })
-        ds_complet['lat'].attrs.update({
-            'standard_name': 'latitude',
-            'long_name': 'latitude',
-            'axis': 'Y',
-            'units': 'degrees_north'
-        })
-        ds_complet['lon'].attrs.update({
-            'standard_name': 'longitude',
-            'long_name': 'longitude',
-            'axis': 'X',
-            'units': 'degrees_east'
-        })
-        
-        # Métadonnées pour chaque variable
-        ds_complet['ifm'].attrs.update({
-            'long_name': 'Fire Weather Index',
-            'units': '1',
-            'description': 'Indice Forêt Météo (système FWI canadien)'
-        })
-        ds_complet['temp'].attrs.update({
-            'long_name': 'Temperature',
-            'units': 'degrees_Celsius',
-            'standard_name': 'air_temperature'
-        })
-        ds_complet['wind'].attrs.update({
-            'long_name': 'Wind Speed',
-            'units': 'km/h',
-            'standard_name': 'wind_speed'
-        })
-        ds_complet['hr'].attrs.update({
-            'long_name': 'Relative Humidity',
-            'units': 'percent',
-            'standard_name': 'relative_humidity'
-        })
-        ds_complet['rain'].attrs.update({
-            'long_name': 'Precipitation',
-            'units': 'mm',
-            'standard_name': 'precipitation_amount'
-        })
-        ds_complet['ffmc'].attrs.update({
-            'long_name': 'Fine Fuel Moisture Code',
-            'units': '1'
-        })
-        ds_complet['dmc'].attrs.update({
-            'long_name': 'Duff Moisture Code',
-            'units': '1'
-        })
-        ds_complet['dc'].attrs.update({
-            'long_name': 'Drought Code',
-            'units': '1'
-        })
-        ds_complet['isi'].attrs.update({
-            'long_name': 'Initial Spread Index',
-            'units': '1'
-        })
-        ds_complet['bui'].attrs.update({
-            'long_name': 'Buildup Index',
-            'units': '1'
-        })
-        
-        # Métadonnées globales
-        ds_complet.attrs.update({
-            'title': 'Indice Forêt Météo - Auvergne-Rhône-Alpes',
-            'institution': 'Calcul automatique depuis AROME 1.3km',
-            'source': 'Météo-France AROME',
-            'Conventions': 'CF-1.8',
-            'history': f'Créé le {datetime.now().isoformat()}',
-            'run_date': DATE_RUN,
-            'region': ZONE['name']
-        })
-        
-        # 4. Export par variable (pour optimisation dans QGIS)
-        nc_dir = Path("export_netcdf")
-        nc_dir.mkdir(exist_ok=True)
-        
-        # Variables principales pour cartographie
-        variables_principales = {
-            'ifm': 'Indice Forêt Météo',
-            'temp': 'Température',
-            'wind': 'Vent',
-            'hr': 'Humidité',
-            'rain': 'Précipitations'
-        }
-        
-        # Variables FWI complètes
-        variables_fwi = {
-            'ffmc': 'Fine Fuel Moisture Code',
-            'dmc': 'Duff Moisture Code',
-            'dc': 'Drought Code',
-            'isi': 'Initial Spread Index',
-            'bui': 'Buildup Index'
-        }
-        
-        nc_files = []
-        
-        # Export variables principales
-        for var, desc in variables_principales.items():
-            fichier_nc = nc_dir / f"arome_{var}_horaire.nc"
-            ds_var = ds_complet[[var]]
-            # Format NETCDF4_CLASSIC pour compatibilité maximale
-            ds_var.to_netcdf(fichier_nc, format='NETCDF4_CLASSIC', engine='netcdf4')
-            nc_files.append(fichier_nc)
-            print(f"  ✓ {desc:20s}: {fichier_nc.name}")
-        
-        # Export variables FWI (optionnel, dans un fichier groupé)
-        fichier_fwi = nc_dir / "arome_fwi_indices.nc"
-        ds_fwi = ds_complet[list(variables_fwi.keys())]
-        ds_fwi.to_netcdf(fichier_fwi, format='NETCDF4_CLASSIC', engine='netcdf4')
-        nc_files.append(fichier_fwi)
-        print(f"  ✓ Indices FWI complets: {fichier_fwi.name}")
-        
-        # Export cube complet (toutes variables)
-        fichier_complet = nc_dir / "arome_fwi_complet.nc"
-        ds_complet.to_netcdf(fichier_complet, format='NETCDF4_CLASSIC', engine='netcdf4')
-        nc_files.append(fichier_complet)
-        print(f"  ✓ Cube complet       : {fichier_complet.name}")
-        
-        # 5. Création d'un zip pour faciliter le téléchargement
-        zip_nc = f"netcdf_fwi_{DATE_RUN.replace(':', '').replace('-', '')}.zip"
-        with zipfile.ZipFile(zip_nc, 'w', zipfile.ZIP_DEFLATED) as z:
-            for f in nc_files:
-                z.write(f, f.name)
-        
-        print(f"\n✅ Fichiers NetCDF créés ({len(nc_files)} fichiers)")
-        print(f"📦 Archive ZIP: {zip_nc}")
-        print(f"\n💡 Pour utiliser dans QGIS:")
-        print(f"   1. Décompressez {zip_nc}")
-        print(f"   2. Glissez-déposez les fichiers .nc dans QGIS")
-        print(f"   3. Les données temporelles seront détectées automatiquement")
-        
-        return csv_file, zip_nc
-        
+        return csv_file, fichier_complet
+
     except Exception as e:
-        print(f"⚠️  Erreur lors de la création des NetCDF: {e}")
-        print(f"   Le fichier CSV reste disponible: {csv_file}")
+        print(f"⚠️  Erreur lors de la création du NetCDF: {e}")
+        import traceback
+        traceback.print_exc()
         return csv_file, None
 
 if __name__ == "__main__":
@@ -841,4 +720,5 @@ if __name__ == "__main__":
         import traceback
         traceback.print_exc()
         sys.exit(1)
+
 
