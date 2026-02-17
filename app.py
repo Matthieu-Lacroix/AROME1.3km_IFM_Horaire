@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import requests
 import io, json, os, tempfile
-from datetime import datetime
+from datetime import datetime, UTC
 
 st.set_page_config(layout="wide", page_title="IFM · AROME 1.3km", page_icon="🔥", initial_sidebar_state="expanded")
 
@@ -211,23 +211,23 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     col1, col2, col3, col4, col5 = st.columns(5)
-    if col1.button("⏮", use_container_width=True):
+    if col1.button("⏮", width="stretch"):
         st.session_state.step_idx = 0
         st.session_state.is_playing = False
         st.rerun()
-    if col2.button("◀", use_container_width=True):
+    if col2.button("◀", width="stretch"):
         st.session_state.step_idx = max(0, st.session_state.step_idx - 1)
         st.session_state.is_playing = False
         st.rerun()
     play_label = "⏸" if st.session_state.is_playing else "▶"
-    if col3.button(play_label, use_container_width=True):
+    if col3.button(play_label, width="stretch"):
         st.session_state.is_playing = not st.session_state.is_playing
         st.rerun()
-    if col4.button("▶", use_container_width=True, key="next_btn"):
+    if col4.button("▶", width="stretch", key="next_btn"):
         st.session_state.step_idx = min(n_steps-1, st.session_state.step_idx + 1)
         st.session_state.is_playing = False
         st.rerun()
-    if col5.button("⏭", use_container_width=True):
+    if col5.button("⏭", width="stretch"):
         st.session_state.step_idx = n_steps - 1
         st.session_state.is_playing = False
         st.rerun()
@@ -297,7 +297,7 @@ def delta_str(v, unit=''):
     arr = '↑' if v > 0 else '↓'
     return f'<span class="{cls}">{arr} {abs(v):.1f}{unit}</span>'
 
-now_utc = datetime.utcnow().strftime('%d/%m/%Y %H:%M UTC')
+now_utc = datetime.now(UTC).strftime('%d/%m/%Y %H:%M UTC')
 st.markdown(f"""
 <div class="app-header">
     <div>
@@ -369,8 +369,8 @@ if page == "🗺  Cartographie":
 
     # Raster IFM via image overlay (conversion en image RGBA)
     ifm_arr = data_slice['ifm'].values
-    from matplotlib import cm
-    cmap = cm.get_cmap('RdYlGn_r')
+    from matplotlib import colormaps
+    cmap = colormaps['RdYlGn_r']
     ifm_norm = np.clip(ifm_arr / 100, 0, 1)
     ifm_rgba = (cmap(ifm_norm) * 255).astype(np.uint8)
     ifm_rgba[:,:,3] = 180  # transparence
@@ -430,7 +430,7 @@ if page == "🗺  Cartographie":
         )
     )
 
-    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig, width="stretch", config={'displayModeBar': False})
 
     # Stats sous la carte
     ifm_flat = data_slice['ifm'].values.flatten()
@@ -469,7 +469,7 @@ elif page == "📈  Séries temporelles":
         fig_ifm.add_hline(y=30, line_color='rgba(230,120,0,0.3)', line_dash='dot', line_width=1)
         fig_ifm.add_vline(x=vline, line_color='rgba(0,0,0,0.25)', line_width=1)
         fig_ifm.update_layout(**clean_layout(height=280, title=dict(text='Indice Forêt Météo — évolution temporelle', font=dict(size=13, family='Source Sans 3'), x=0), yaxis=dict(title='IFM', range=[0, None])))
-        st.plotly_chart(fig_ifm, use_container_width=True, config={'displayModeBar': False})
+        st.plotly_chart(fig_ifm, width="stretch", config={'displayModeBar': False})
 
     col_a, col_b = st.columns(2)
     with col_a:
@@ -482,7 +482,7 @@ elif page == "📈  Séries temporelles":
             fig_th.update_layout(**clean_layout(height=250, title=dict(text='Température & Humidité', font=dict(size=12, family='Source Sans 3'), x=0)))
             fig_th.update_yaxes(title_text='°C', secondary_y=False, gridcolor='#ebebeb')
             fig_th.update_yaxes(title_text='HR (%)', secondary_y=True, showgrid=False)
-            st.plotly_chart(fig_th, use_container_width=True, config={'displayModeBar': False})
+            st.plotly_chart(fig_th, width="stretch", config={'displayModeBar': False})
 
     with col_b:
         if 'wind' in ds:
@@ -492,14 +492,14 @@ elif page == "📈  Séries temporelles":
             fig_w.add_trace(go.Scatter(x=wind_s.index, y=wind_s.values, line=dict(color='#1565c0', width=2), name='Vent moy (km/h)'))
             fig_w.add_vline(x=vline, line_color='rgba(0,0,0,0.2)', line_width=1)
             fig_w.update_layout(**clean_layout(height=250, title=dict(text='Vent (km/h)', font=dict(size=12, family='Source Sans 3'), x=0), yaxis=dict(title='km/h')))
-            st.plotly_chart(fig_w, use_container_width=True, config={'displayModeBar': False})
+            st.plotly_chart(fig_w, width="stretch", config={'displayModeBar': False})
 
     st.markdown('<div class="section-title">Tableau des échéances</div>', unsafe_allow_html=True)
     display_cols = [c for c in ['ifm', 'temp', 'wind', 'hr', 'rain'] if c in df_mean.columns]
     df_disp = df_mean[display_cols].copy().round(1)
     df_disp.index = df_disp.index.strftime('%a %d/%m · %H:00')
     df_disp.columns = [c.upper() for c in df_disp.columns]
-    st.dataframe(df_disp, use_container_width=True, height=280)
+    st.dataframe(df_disp, width="stretch", height=280)
 
 # ══════════════════════════════════════════════════════════════
 #  PAGE GRAPHIQUES
@@ -518,6 +518,6 @@ elif page == "📊  Graphiques":
     fig_all.update_layout(height=200*len(existing), showlegend=False, margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor='#fff', plot_bgcolor='#fafafa', font=dict(family='Source Sans 3', size=11))
     fig_all.update_xaxes(showgrid=True, gridcolor='#ebebeb')
     fig_all.update_yaxes(showgrid=True, gridcolor='#ebebeb')
-    st.plotly_chart(fig_all, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig_all, width="stretch", config={'displayModeBar': False})
 
 st.markdown(f'<div style="margin-top:1.5rem;padding:6px 0;border-top:1px solid var(--border);font-size:0.65rem;color:var(--muted);display:flex;justify-content:space-between"><span>IFM · AROME 1.3 km · Météo-France</span><span>Généré le {now_utc}</span></div>', unsafe_allow_html=True)
