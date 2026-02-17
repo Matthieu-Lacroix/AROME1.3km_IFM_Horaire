@@ -223,7 +223,7 @@ with st.sidebar:
     if col3.button(play_label, use_container_width=True):
         st.session_state.is_playing = not st.session_state.is_playing
         st.rerun()
-    if col4.button("▶", use_container_width=True):
+    if col4.button("▶", use_container_width=True, key="next_btn"):
         st.session_state.step_idx = min(n_steps-1, st.session_state.step_idx + 1)
         st.session_state.is_playing = False
         st.rerun()
