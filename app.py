@@ -8,7 +8,7 @@ import requests
 import io, json, os, tempfile
 from datetime import datetime, UTC
 
-st.set_page_config(layout="wide", page_title="IFM · AROME 1.3km", page_icon="🔥", initial_sidebar_state="expanded")
+st.set_page_config(layout="wide", page_title="IFM · AROME 1.3km", page_icon="🔥", initial_sidebar_state="auto")
 
 # ─────────────────────────────────────────────────────────────
 #  CHARGEMENT
@@ -139,7 +139,7 @@ st.markdown("""
 html,body,[class*="css"]{font-family:'Source Sans 3',sans-serif!important;background:var(--bg)!important;color:var(--text)!important}
 #MainMenu,footer,header,[data-testid="stToolbar"],[data-testid="stDecoration"]{display:none!important}
 .block-container{padding-top:1rem!important;padding-bottom:1rem!important}
-[data-testid="stSidebar"]{background:var(--white)!important;border-right:1px solid var(--border)!important;min-width:220px!important;max-width:220px!important}
+[data-testid="stSidebar"]{background:var(--white)!important;border-right:1px solid var(--border)!important}
 [data-testid="stSidebar"] *{color:var(--text)!important}
 [data-testid="stSidebar"] [data-testid="stRadio"] > div{flex-direction:column;gap:2px}
 [data-testid="stSidebar"] [data-testid="stRadio"] label{display:flex!important;align-items:center!important;padding:9px 12px!important;border-radius:5px!important;font-size:0.85rem!important;font-weight:400!important;cursor:pointer!important;transition:background 0.15s!important;border:none!important;width:100%!important}
@@ -211,23 +211,23 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     col1, col2, col3, col4, col5 = st.columns(5)
-    if col1.button("⏮", width="stretch"):
+    if col1.button("⏮", width="stretch", key="first"):
         st.session_state.step_idx = 0
         st.session_state.is_playing = False
         st.rerun()
-    if col2.button("◀", width="stretch"):
+    if col2.button("◀", width="stretch", key="prev"):
         st.session_state.step_idx = max(0, st.session_state.step_idx - 1)
         st.session_state.is_playing = False
         st.rerun()
     play_label = "⏸" if st.session_state.is_playing else "▶"
-    if col3.button(play_label, width="stretch"):
+    if col3.button(play_label, width="stretch", key="play"):
         st.session_state.is_playing = not st.session_state.is_playing
         st.rerun()
-    if col4.button("▶", width="stretch", key="next_btn"):
+    if col4.button("▶", width="stretch", key="next"):
         st.session_state.step_idx = min(n_steps-1, st.session_state.step_idx + 1)
         st.session_state.is_playing = False
         st.rerun()
-    if col5.button("⏭", width="stretch"):
+    if col5.button("⏭", width="stretch", key="last"):
         st.session_state.step_idx = n_steps - 1
         st.session_state.is_playing = False
         st.rerun()
@@ -346,58 +346,49 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-ifm_cs = [
-    [0.00, '#1b5e20'], [0.10, '#43a047'], [0.25, '#fdd835'],
-    [0.38, '#fb8c00'], [0.50, '#e53935'], [0.70, '#b71c1c'], [1.00, '#880e4f'],
-]
-
 # ══════════════════════════════════════════════════════════════
-#  PAGE CARTE
+#  PAGE CARTE — Scattermapbox interactif
 # ══════════════════════════════════════════════════════════════
 if page == "🗺  Cartographie":
 
-    # Carte raster avec overlay OSM + départements
-    from PIL import Image
-    import plotly.express as px
-
-    # Fond OSM (via Scattergeo avec projection)
+    # Carte Mapbox OSM avec points IFM + départements
     lons = ds.lon.values
     lats = ds.lat.values
-    center_lat, center_lon = (lats.min()+lats.max())/2, (lons.min()+lons.max())/2
+    ifm_vals = data_slice['ifm'].values
+
+    lon_mesh, lat_mesh = np.meshgrid(lons, lats)
+    flat_lon = lon_mesh.flatten()
+    flat_lat = lat_mesh.flatten()
+    flat_ifm = ifm_vals.flatten()
+    mask = ~np.isnan(flat_ifm)
+    flat_lon, flat_lat, flat_ifm = flat_lon[mask], flat_lat[mask], flat_ifm[mask]
+
+    # Sous-échantillonnage pour perf
+    if len(flat_ifm) > 8000:
+        idx = np.random.choice(len(flat_ifm), 8000, replace=False)
+        flat_lon, flat_lat, flat_ifm = flat_lon[idx], flat_lat[idx], flat_ifm[idx]
 
     fig = go.Figure()
 
-    # Raster IFM via image overlay (conversion en image RGBA)
-    ifm_arr = data_slice['ifm'].values
-    from matplotlib import colormaps
-    cmap = colormaps['RdYlGn_r']
-    ifm_norm = np.clip(ifm_arr / 100, 0, 1)
-    ifm_rgba = (cmap(ifm_norm) * 255).astype(np.uint8)
-    ifm_rgba[:,:,3] = 180  # transparence
-
-    fig.add_trace(go.Scatter(
-        x=[lons.min(), lons.max()],
-        y=[lats.min(), lats.max()],
-        mode='markers',
-        marker=dict(size=0.1, opacity=0),
-        hoverinfo='skip',
-        showlegend=False,
+    fig.add_trace(go.Scattermapbox(
+        lon=flat_lon, lat=flat_lat, mode='markers',
+        marker=dict(
+            size=6, color=flat_ifm,
+            colorscale=[
+                [0.00, '#1b5e20'], [0.10, '#43a047'], [0.25, '#fdd835'],
+                [0.38, '#fb8c00'], [0.50, '#e53935'], [0.70, '#b71c1c'], [1.00, '#880e4f'],
+            ],
+            cmin=0, cmax=100, opacity=0.65,
+            colorbar=dict(
+                title="IFM", thickness=12, len=0.7,
+                tickvals=[0,10,30,50,80,100],
+                bgcolor='rgba(255,255,255,0.9)',
+                bordercolor='#d0d0d0', borderwidth=1,
+            ),
+        ),
+        hovertemplate='<b>IFM : %{marker.color:.1f}</b><br>Lon : %{lon:.3f}° | Lat : %{lat:.3f}°<extra></extra>',
+        name='IFM',
     ))
-
-    # Overlay image
-    img = Image.fromarray(ifm_rgba, mode='RGBA')
-    fig.add_layout_image(
-        dict(
-            source=img,
-            xref="x", yref="y",
-            x=lons.min(), y=lats.max(),
-            sizex=lons.max()-lons.min(),
-            sizey=lats.max()-lats.min(),
-            sizing="stretch",
-            opacity=0.7,
-            layer="above",
-        )
-    )
 
     # Départements GeoJSON
     for feat in geojson.get('features', []):
@@ -410,29 +401,31 @@ if page == "🗺  Cartographie":
             continue
         for polygon in coords_list:
             for ring in polygon:
-                lons_dep = [c[0] for c in ring] + [ring[0][0]]
-                lats_dep = [c[1] for c in ring] + [ring[0][1]]
-                fig.add_trace(go.Scatter(
-                    x=lons_dep, y=lats_dep,
-                    mode='lines',
+                lons_dep = [c[0] for c in ring]
+                lats_dep = [c[1] for c in ring]
+                fig.add_trace(go.Scattermapbox(
+                    lon=lons_dep, lat=lats_dep, mode='lines',
                     line=dict(color='rgba(0,0,0,0.6)', width=1.5),
-                    hoverinfo='skip',
-                    showlegend=False,
+                    hoverinfo='skip', showlegend=False,
                 ))
 
+    center_lat = (lats.min() + lats.max()) / 2
+    center_lon = (lons.min() + lons.max()) / 2
+
     fig.update_layout(
-        **clean_layout(
-            height=650,
-            margin=dict(l=0, r=0, t=0, b=0),
-            xaxis=dict(title='', showgrid=False, zeroline=False, visible=False),
-            yaxis=dict(title='', showgrid=False, zeroline=False, visible=False, scaleanchor="x", scaleratio=1),
-            plot_bgcolor='#e5e5e5',
-        )
+        mapbox=dict(
+            style="open-street-map",
+            center=dict(lat=center_lat, lon=center_lon),
+            zoom=7,
+        ),
+        margin=dict(l=0, r=0, t=0, b=0),
+        height=650,
+        showlegend=False,
     )
 
     st.plotly_chart(fig, width="stretch", config={'displayModeBar': False})
 
-    # Stats sous la carte
+    # Stats
     ifm_flat = data_slice['ifm'].values.flatten()
     ifm_flat = ifm_flat[~np.isnan(ifm_flat)]
     pcts = [
@@ -462,13 +455,13 @@ elif page == "📈  Séries temporelles":
     if 'ifm' in ds:
         ifm_s, ifm_mn, ifm_mx, ifm_p90 = ds['ifm'].mean(dim=['lat','lon']).to_series(), ds['ifm'].min(dim=['lat','lon']).to_series(), ds['ifm'].max(dim=['lat','lon']).to_series(), ds['ifm'].quantile(0.9, dim=['lat','lon']).to_series()
         fig_ifm = go.Figure()
-        fig_ifm.add_trace(go.Scatter(x=list(ifm_s.index) + list(ifm_s.index[::-1]), y=list(ifm_mx.values) + list(ifm_mn.values[::-1]), fill='toself', fillcolor='rgba(192,57,43,0.08)', line=dict(width=0), name='Min/Max', hoverinfo='skip'))
+        fig_ifm.add_trace(go.Scatter(x=list(ifm_s.index)+list(ifm_s.index[::-1]), y=list(ifm_mx.values)+list(ifm_mn.values[::-1]), fill='toself', fillcolor='rgba(192,57,43,0.08)', line=dict(width=0), name='Min/Max', hoverinfo='skip'))
         fig_ifm.add_trace(go.Scatter(x=ifm_p90.index, y=ifm_p90.values, line=dict(color='rgba(192,57,43,0.35)', width=1, dash='dot'), name='P90'))
         fig_ifm.add_trace(go.Scatter(x=ifm_s.index, y=ifm_s.values, line=dict(color='#c0392b', width=2.5), name='Moyenne', hovertemplate='<b>%{x|%d/%m %H:00}</b><br>IFM : %{y:.1f}<extra></extra>'))
         fig_ifm.add_hline(y=50, line_color='rgba(180,0,0,0.4)', line_dash='dash', line_width=1, annotation_text='Seuil danger (50)', annotation_font=dict(size=10, color='#c0392b'))
         fig_ifm.add_hline(y=30, line_color='rgba(230,120,0,0.3)', line_dash='dot', line_width=1)
         fig_ifm.add_vline(x=vline, line_color='rgba(0,0,0,0.25)', line_width=1)
-        fig_ifm.update_layout(**clean_layout(height=280, title=dict(text='Indice Forêt Météo — évolution temporelle', font=dict(size=13, family='Source Sans 3'), x=0), yaxis=dict(title='IFM', range=[0, None])))
+        fig_ifm.update_layout(**clean_layout(height=280, title=dict(text='Indice Forêt Météo', font=dict(size=13, family='Source Sans 3'), x=0), yaxis=dict(title='IFM', range=[0, None])))
         st.plotly_chart(fig_ifm, width="stretch", config={'displayModeBar': False})
 
     col_a, col_b = st.columns(2)
