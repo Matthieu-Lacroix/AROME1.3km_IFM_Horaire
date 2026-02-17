@@ -1,7 +1,9 @@
 streamlit
 xarray
-netcdf4
 pandas
+numpy
 plotly
 requests
+netcdf4
 h5netcdf
+scipy
