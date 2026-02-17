@@ -24,7 +24,7 @@ st.set_page_config(
 # ─────────────────────────────────────────────────────────────
 st.markdown("""
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
 <style>
 /* ── Palette ── */
@@ -40,8 +40,8 @@ st.markdown("""
     --ok:       #43a047;
     --text:     #e8eaf0;
     --muted:    rgba(232,234,240,0.45);
-    --mono:     'IBM Plex Mono', monospace;
-    --display:  'Syne', sans-serif;
+    --mono:     'JetBrains Mono', monospace;
+    --display:  'Inter', sans-serif;
 }
 
 /* ── Base ── */
@@ -400,7 +400,7 @@ def dark_plotly_layout(**kwargs):
     base = dict(
         paper_bgcolor='#13161e',
         plot_bgcolor='#0d0f14',
-        font=dict(family='IBM Plex Mono', size=11, color='#e8eaf0'),
+        font=dict(family='JetBrains Mono', size=11, color='#e8eaf0'),
         xaxis=dict(gridcolor='rgba(255,255,255,0.05)', zeroline=False, showline=False),
         yaxis=dict(gridcolor='rgba(255,255,255,0.05)', zeroline=False, showline=False),
         margin=dict(l=10, r=10, t=36, b=10),
@@ -413,7 +413,7 @@ def dark_plotly_layout(**kwargs):
         hoverlabel=dict(
             bgcolor='#1a1e28',
             bordercolor='rgba(255,87,34,0.4)',
-            font=dict(family='IBM Plex Mono', size=11),
+            font=dict(family='JetBrains Mono', size=11),
         ),
     )
     base.update(kwargs)
@@ -430,7 +430,7 @@ if ds is None:
     <div style="background:#1a1e28;border:1px solid #e53935;border-radius:6px;
                 padding:20px;text-align:center;margin-top:40px;">
         <div style="font-size:2rem;margin-bottom:8px;">⚠️</div>
-        <div style="font-family:'Syne',sans-serif;font-size:1rem;color:#e53935;font-weight:700;">
+        <div style="font-family:'Inter',sans-serif;font-size:1rem;color:#e53935;font-weight:700;">
             DONNÉES INDISPONIBLES
         </div>
         <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin-top:8px;">
@@ -689,17 +689,18 @@ with tab1:
             **dark_plotly_layout(
                 height=580,
                 margin=dict(l=0, r=0, t=0, b=0),
-                coloraxis_colorbar=dict(
-                    title='IFM',
-                    titlefont=dict(size=10),
-                    tickfont=dict(size=9),
-                    tickvals=[0, 10, 30, 50, 80, 100],
-                    ticktext=['0', '10', '30', '50', '80', '100'],
-                    thickness=14,
-                    len=0.85,
-                    bgcolor='rgba(13,15,20,0.8)',
-                    bordercolor='rgba(255,255,255,0.1)',
-                    borderwidth=1,
+                coloraxis=dict(
+                    colorbar=dict(
+                        title=dict(text='IFM', font=dict(size=10)),
+                        tickfont=dict(size=9),
+                        tickvals=[0, 10, 30, 50, 80, 100],
+                        ticktext=['0', '10', '30', '50', '80', '100'],
+                        thickness=14,
+                        len=0.85,
+                        bgcolor='rgba(13,15,20,0.8)',
+                        bordercolor='rgba(255,255,255,0.1)',
+                        borderwidth=1,
+                    )
                 ),
                 xaxis=dict(title='Longitude', showgrid=False),
                 yaxis=dict(title='Latitude',  showgrid=False),
@@ -837,7 +838,7 @@ with tab2:
         fig_ifm.update_layout(
             **dark_plotly_layout(
                 height=280,
-                title=dict(text='Indice Forêt Météo (IFM)', font=dict(size=12, family='Syne'), x=0),
+                title=dict(text='Indice Forêt Météo (IFM)', font=dict(size=12, family='Inter'), x=0),
                 yaxis=dict(title='IFM', range=[0, None]),
             )
         )
@@ -870,7 +871,7 @@ with tab2:
 
             fig_th.update_layout(**dark_plotly_layout(
                 height=240,
-                title=dict(text='Température & Humidité relative', font=dict(size=11, family='Syne'), x=0),
+                title=dict(text='Température & Humidité relative', font=dict(size=11, family='Inter'), x=0),
             ))
             fig_th.update_yaxes(title_text='°C', secondary_y=False,
                                 gridcolor='rgba(255,255,255,0.05)')
@@ -902,7 +903,7 @@ with tab2:
 
             fig_wind.update_layout(**dark_plotly_layout(
                 height=240,
-                title=dict(text='Vent (km/h)', font=dict(size=11, family='Syne'), x=0),
+                title=dict(text='Vent (km/h)', font=dict(size=11, family='Inter'), x=0),
                 yaxis=dict(title='km/h'),
             ))
             st.plotly_chart(fig_wind, use_container_width=True, config={'displayModeBar': False})
@@ -929,7 +930,7 @@ with tab2:
             'background-color': '#13161e',
             'color': '#e8eaf0',
             'border': '1px solid rgba(255,255,255,0.05)',
-            'font-family': 'IBM Plex Mono',
+            'font-family': 'JetBrains Mono',
             'font-size': '0.75rem',
         })
 
@@ -974,7 +975,7 @@ with tab3:
             ))
             fig_scat.update_layout(**dark_plotly_layout(
                 height=320,
-                title=dict(text='IFM vs Température (couleur = vent)', font=dict(size=11, family='Syne'), x=0),
+                title=dict(text='IFM vs Température (couleur = vent)', font=dict(size=11, family='Inter'), x=0),
                 xaxis=dict(title='Température (°C)'),
                 yaxis=dict(title='IFM'),
             ))
@@ -1003,7 +1004,7 @@ with tab3:
             ))
             fig_corr.update_layout(**dark_plotly_layout(
                 height=320,
-                title=dict(text='Matrice de corrélation (pixels)', font=dict(size=11, family='Syne'), x=0),
+                title=dict(text='Matrice de corrélation (pixels)', font=dict(size=11, family='Inter'), x=0),
                 margin=dict(l=40, r=10, t=40, b=10),
             ))
             st.plotly_chart(fig_corr, use_container_width=True, config={'displayModeBar': False})
@@ -1033,7 +1034,7 @@ with tab3:
         fig_box.add_hline(y=50, line_color='rgba(229,57,53,0.4)', line_dash='dash', line_width=1)
         fig_box.update_layout(**dark_plotly_layout(
             height=300,
-            title=dict(text='Distribution IFM par échéance (1 sur {})'.format(step_sel), font=dict(size=11, family='Syne'), x=0),
+            title=dict(text='Distribution IFM par échéance (1 sur {})'.format(step_sel), font=dict(size=11, family='Inter'), x=0),
             showlegend=False,
             xaxis=dict(title='Échéance', tickangle=-45),
             yaxis=dict(title='IFM'),
