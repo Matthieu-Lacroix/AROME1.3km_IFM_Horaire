@@ -4,3 +4,4 @@ export_netcdf/
 ifm_*.csv
 netcdf_*.zip
 *.grib
+.streamlit/secrets.toml
