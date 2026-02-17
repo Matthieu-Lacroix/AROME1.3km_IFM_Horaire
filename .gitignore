@@ -1,0 +1,6 @@
+# Ignorer les données brutes et les exports lourds
+data_grib/
+export_netcdf/
+ifm_*.csv
+netcdf_*.zip
+*.grib
