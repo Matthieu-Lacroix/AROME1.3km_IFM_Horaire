@@ -19,238 +19,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ─────────────────────────────────────────────────────────────
-#  DESIGN SYSTEM — Dark Ops / Salle de veille incendie
-# ─────────────────────────────────────────────────────────────
-st.markdown("""
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-
-<style>
-/* ── Palette ── */
-:root {
-    --bg:       #0d0f14;
-    --surface:  #13161e;
-    --surface2: #1a1e28;
-    --border:   rgba(255,255,255,0.07);
-    --accent:   #ff5722;
-    --accent2:  #ff8c42;
-    --danger:   #e53935;
-    --warn:     #ffb300;
-    --ok:       #43a047;
-    --text:     #e8eaf0;
-    --muted:    rgba(232,234,240,0.45);
-    --mono:     'JetBrains Mono', monospace;
-    --display:  'Inter', sans-serif;
-}
-
-/* ── Base ── */
-html, body, [class*="css"] {
-    font-family: var(--mono);
-    background-color: var(--bg) !important;
-    color: var(--text) !important;
-}
-
-.main .block-container {
-    background: var(--bg);
-    padding-top: 1.5rem;
-    padding-bottom: 2rem;
-    max-width: 100%;
-}
-
-/* ── Sidebar ── */
-[data-testid="stSidebar"] {
-    background: var(--surface) !important;
-    border-right: 1px solid var(--border);
-}
-[data-testid="stSidebar"] * { color: var(--text) !important; }
-[data-testid="stSidebar"] hr { border-color: var(--border); }
-
-/* ── Header ── */
-.ops-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.6rem 1.2rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    margin-bottom: 1.2rem;
-    font-family: var(--display);
-}
-.ops-header-title {
-    font-size: 1.25rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--accent);
-}
-.ops-header-sub {
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    color: var(--muted);
-    letter-spacing: 0.12em;
-}
-.ops-pulse {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    background: var(--ok);
-    box-shadow: 0 0 0 0 rgba(67,160,71,0.6);
-    animation: pulse 2s infinite;
-    display: inline-block;
-    margin-right: 6px;
-}
-@keyframes pulse {
-    0%   { box-shadow: 0 0 0 0 rgba(67,160,71,0.6); }
-    70%  { box-shadow: 0 0 0 8px rgba(67,160,71,0); }
-    100% { box-shadow: 0 0 0 0 rgba(67,160,71,0); }
-}
-
-/* ── Metric cards ── */
-.metric-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 10px;
-    margin-bottom: 1rem;
-}
-.metric-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 12px 16px;
-    position: relative;
-    overflow: hidden;
-    transition: border-color 0.2s;
-}
-.metric-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--accent), transparent);
-}
-.metric-card:hover { border-color: rgba(255,87,34,0.3); }
-.metric-label {
-    font-size: 0.62rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 4px;
-}
-.metric-value {
-    font-family: var(--display);
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: var(--text);
-    line-height: 1;
-}
-.metric-unit {
-    font-size: 0.72rem;
-    color: var(--muted);
-    margin-top: 2px;
-}
-.metric-delta {
-    font-size: 0.65rem;
-    margin-top: 4px;
-}
-.delta-up   { color: var(--danger); }
-.delta-down { color: var(--ok); }
-
-/* ── IFM badge ── */
-.ifm-badge {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 3px;
-    font-weight: 700;
-    font-size: 0.7rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-}
-
-/* ── Tabs ── */
-[data-testid="stTabs"] [data-baseweb="tab-list"] {
-    gap: 4px;
-    background: var(--surface);
-    padding: 4px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    margin-bottom: 1rem;
-}
-[data-testid="stTabs"] [data-baseweb="tab"] {
-    background: transparent !important;
-    border-radius: 4px !important;
-    color: var(--muted) !important;
-    font-family: var(--mono) !important;
-    font-size: 0.75rem !important;
-    letter-spacing: 0.08em;
-    padding: 8px 16px !important;
-    border: none !important;
-}
-[data-testid="stTabs"] [aria-selected="true"] {
-    background: var(--accent) !important;
-    color: white !important;
-}
-
-/* ── Slider ── */
-[data-testid="stSlider"] > div > div > div {
-    background: var(--accent) !important;
-}
-
-/* ── Dataframe ── */
-[data-testid="stDataFrame"] {
-    background: var(--surface) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 6px;
-}
-
-/* ── Section titles ── */
-.section-title {
-    font-family: var(--display);
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--muted);
-    border-left: 2px solid var(--accent);
-    padding-left: 10px;
-    margin: 1rem 0 0.6rem;
-}
-
-/* ── Timeline indicator ── */
-.timeline-bar {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px 16px;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.timeline-echo {
-    font-family: var(--display);
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--accent2);
-}
-
-/* ── Info boxes ── */
-.info-box {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--accent);
-    border-radius: 0 6px 6px 0;
-    padding: 10px 14px;
-    font-size: 0.75rem;
-    color: var(--muted);
-    margin-bottom: 0.6rem;
-}
-
-/* ── Hide Streamlit default elements ── */
-#MainMenu, footer, header { visibility: hidden; }
-[data-testid="stToolbar"] { display: none; }
-</style>
-""", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────
 
@@ -384,657 +152,706 @@ def load_data():
         st.error(f"❌ Erreur téléchargement/lecture : {e}")
         return None
 
+
 # ─────────────────────────────────────────────────────────────
 #  HELPERS
 # ─────────────────────────────────────────────────────────────
-def ifm_level(val):
-    """Retourne (label, couleur) selon le niveau IFM."""
-    if val < 10:   return "Faible",     "#43a047"
-    if val < 30:   return "Modéré",     "#ffb300"
-    if val < 50:   return "Fort",       "#ff7043"
-    if val < 80:   return "Très fort",  "#e53935"
-    return             "Exceptionnel", "#b71c1c"
 
-def dark_plotly_layout(**kwargs):
-    """Layout Plotly commun dark ops."""
+def ifm_level(val):
+    if val < 10:  return "Faible",       "#2e7d32", "#e8f5e9"
+    if val < 30:  return "Modéré",       "#f57f17", "#fff8e1"
+    if val < 50:  return "Fort",         "#e65100", "#fff3e0"
+    if val < 80:  return "Très fort",    "#c62828", "#ffebee"
+    return              "Exceptionnel",  "#880e4f", "#fce4ec"
+
+def clean_layout(**kwargs):
+    """Layout Plotly sobre fond blanc."""
     base = dict(
-        paper_bgcolor='#13161e',
-        plot_bgcolor='#0d0f14',
-        font=dict(family='JetBrains Mono', size=11, color='#e8eaf0'),
-        xaxis=dict(gridcolor='rgba(255,255,255,0.05)', zeroline=False, showline=False),
-        yaxis=dict(gridcolor='rgba(255,255,255,0.05)', zeroline=False, showline=False),
-        margin=dict(l=10, r=10, t=36, b=10),
+        paper_bgcolor='#ffffff',
+        plot_bgcolor='#fafafa',
+        font=dict(family='Source Sans 3, sans-serif', size=12, color='#1a1a2e'),
+        xaxis=dict(gridcolor='#ebebeb', zeroline=False, showline=True,
+                   linecolor='#d0d0d0', linewidth=1),
+        yaxis=dict(gridcolor='#ebebeb', zeroline=False, showline=True,
+                   linecolor='#d0d0d0', linewidth=1),
+        margin=dict(l=10, r=10, t=40, b=10),
         legend=dict(
-            bgcolor='rgba(19,22,30,0.8)',
-            bordercolor='rgba(255,255,255,0.07)',
+            bgcolor='rgba(255,255,255,0.9)',
+            bordercolor='#e0e0e0',
             borderwidth=1,
-            font=dict(size=10),
+            font=dict(size=11),
         ),
         hoverlabel=dict(
-            bgcolor='#1a1e28',
-            bordercolor='rgba(255,87,34,0.4)',
-            font=dict(family='JetBrains Mono', size=11),
+            bgcolor='#ffffff',
+            bordercolor='#c0392b',
+            font=dict(family='Source Sans 3, sans-serif', size=12),
         ),
     )
     base.update(kwargs)
     return base
 
 # ─────────────────────────────────────────────────────────────
+#  CSS — Sobre / Institutionnel
+# ─────────────────────────────────────────────────────────────
+st.markdown("""
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --bg:       #f4f5f7;
+    --white:    #ffffff;
+    --border:   #dde1e7;
+    --text:     #1c2333;
+    --muted:    #6b7280;
+    --accent:   #c0392b;
+    --accent-l: #fdf2f2;
+    --nav-w:    220px;
+    --sans:     'Source Sans 3', sans-serif;
+    --mono:     'Source Code Pro', monospace;
+}
+
+html, body, [class*="css"] {
+    font-family: var(--sans) !important;
+    background-color: var(--bg) !important;
+    color: var(--text) !important;
+}
+
+/* Masquer les éléments Streamlit superflus */
+#MainMenu, footer, header { visibility: hidden; }
+[data-testid="stToolbar"] { display: none; }
+[data-testid="stDecoration"] { display: none; }
+.block-container { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+
+/* ── Sidebar ── */
+[data-testid="stSidebar"] {
+    background: var(--white) !important;
+    border-right: 1px solid var(--border) !important;
+    min-width: 220px !important;
+    max-width: 220px !important;
+}
+[data-testid="stSidebar"] * { color: var(--text) !important; }
+
+/* ── Navigation verticale (radio buttons) ── */
+[data-testid="stSidebar"] [data-testid="stRadio"] > div {
+    flex-direction: column;
+    gap: 2px;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] label {
+    display: flex !important;
+    align-items: center !important;
+    padding: 9px 12px !important;
+    border-radius: 5px !important;
+    font-size: 0.85rem !important;
+    font-weight: 400 !important;
+    cursor: pointer !important;
+    transition: background 0.15s !important;
+    border: none !important;
+    width: 100% !important;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
+    background: var(--bg) !important;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] [aria-checked="true"] + div + label,
+[data-testid="stSidebar"] [data-testid="stRadio"] label[data-selected="true"] {
+    background: var(--accent-l) !important;
+    color: var(--accent) !important;
+    font-weight: 600 !important;
+}
+/* Cacher les boutons radio visuels */
+[data-testid="stSidebar"] [data-testid="stRadio"] input[type="radio"] {
+    display: none !important;
+}
+
+/* ── Slider ── */
+[data-testid="stSlider"] [data-baseweb="slider"] [data-testid="stTickBar"] { display: none; }
+[data-testid="stSlider"] [data-baseweb="slider"] div[role="slider"] {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+}
+[data-testid="stSlider"] [data-baseweb="slider"] div[data-testid="stSlider-track-fill"] {
+    background: var(--accent) !important;
+}
+
+/* ── Metric cards ── */
+.metric-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    margin-bottom: 1rem;
+}
+.metric-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    border-top: 3px solid var(--border);
+}
+.metric-card.accent { border-top-color: var(--accent); }
+.metric-card.warn   { border-top-color: #e65100; }
+.metric-card.ok     { border-top-color: #2e7d32; }
+.metric-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+}
+.metric-val {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.1;
+    font-family: var(--sans);
+}
+.metric-unit { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+.metric-delta { font-size: 0.7rem; margin-top: 3px; }
+.up   { color: #c62828; }
+.down { color: #2e7d32; }
+
+/* ── IFM badge ── */
+.ifm-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+/* ── Section titre ── */
+.section-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+    margin: 1rem 0 0.75rem;
+}
+
+/* ── Encadré info ── */
+.info-block {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.6;
+}
+.info-block b { color: var(--text); }
+
+/* ── Header bande ── */
+.app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    padding: 10px 16px;
+    margin-bottom: 1rem;
+}
+.app-header-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.03em;
+}
+.app-header-meta {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 1px;
+}
+.app-header-right {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-align: right;
+}
+
+/* ── Légende IFM sidebar ── */
+.ifm-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 0.78rem;
+    color: var(--muted);
+}
+.ifm-dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+/* ── Tableau ── */
+[data-testid="stDataFrame"] {
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+}
+
+/* ── Echéance label ── */
+.ech-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 0.4rem 0 0.8rem;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────
 #  CHARGEMENT
 # ─────────────────────────────────────────────────────────────
-with st.spinner(""):
+with st.spinner("Chargement des données…"):
     ds = load_data()
 
 if ds is None:
-    st.markdown("""
-    <div style="background:#1a1e28;border:1px solid #e53935;border-radius:6px;
-                padding:20px;text-align:center;margin-top:40px;">
-        <div style="font-size:2rem;margin-bottom:8px;">⚠️</div>
-        <div style="font-family:'Inter',sans-serif;font-size:1rem;color:#e53935;font-weight:700;">
-            DONNÉES INDISPONIBLES
-        </div>
-        <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin-top:8px;">
-            Impossible de charger le fichier NetCDF. Vérifiez l'URL ou le workflow GitHub.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.error("Impossible de charger le fichier NetCDF.")
     st.stop()
 
 # ─────────────────────────────────────────────────────────────
-#  PRÉPARATION DES DONNÉES
+#  PRÉPARATION
 # ─────────────────────────────────────────────────────────────
 time_coords = pd.to_datetime(ds.time.values)
 n_steps     = len(time_coords)
-run_date    = ds.attrs.get('run_date', time_coords[0].strftime('%Y-%m-%d %H:%M UTC'))
+run_date    = ds.attrs.get('run_date', time_coords[0].strftime('%d/%m/%Y %H:%M UTC'))
 region      = ds.attrs.get('region', 'Sud-Est France')
 
-# Moyennes spatiales (calculé une fois)
 @st.cache_data(ttl=3600, show_spinner=False)
 def compute_spatial_means(_ds):
-    ds_mean = _ds.mean(dim=['lat', 'lon'])
-    return ds_mean.to_dataframe()
+    return _ds.mean(dim=['lat', 'lon']).to_dataframe()
 
 df_mean = compute_spatial_means(ds)
 
 # ─────────────────────────────────────────────────────────────
-#  HEADER PRINCIPAL
-# ─────────────────────────────────────────────────────────────
-now_utc = datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
-st.markdown(f"""
-<div class="ops-header">
-    <div>
-        <div class="ops-header-title">🔥 IFM · AROME 1.3 km</div>
-        <div class="ops-header-sub">Indice Forêt Météo · Prévision numérique haute résolution</div>
-    </div>
-    <div style="text-align:right">
-        <div style="font-size:0.7rem;color:var(--muted)">
-            <span class="ops-pulse"></span>LIVE · {now_utc}
-        </div>
-        <div style="font-size:0.7rem;color:var(--muted);margin-top:3px">
-            Run : {run_date} · {region} · {n_steps} échéances
-        </div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# ─────────────────────────────────────────────────────────────
-#  SIDEBAR
+#  SIDEBAR — Navigation verticale + contrôles
 # ─────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown('<div class="section-title">⏱ Contrôle temporel</div>', unsafe_allow_html=True)
+    # Logo / titre
+    st.markdown(f"""
+    <div style="padding:12px 4px 8px;border-bottom:1px solid var(--border);margin-bottom:12px">
+        <div style="font-size:1.0rem;font-weight:700;color:var(--text)">🔥 IFM · AROME</div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:2px">Prévision 1.3 km</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Navigation
+    st.markdown('<div style="font-size:0.68rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Navigation</div>', unsafe_allow_html=True)
+    page = st.radio(
+        "page",
+        ["🗺  Cartographie", "📈  Séries temporelles", "🔬  Analyse"],
+        label_visibility="collapsed",
+    )
+
+    st.markdown('<div style="height:1px;background:var(--border);margin:14px 0"></div>', unsafe_allow_html=True)
+
+    # Contrôle temporel
+    st.markdown('<div style="font-size:0.68rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Échéance</div>', unsafe_allow_html=True)
 
     step_idx = st.slider(
         "Échéance",
-        min_value=0,
-        max_value=n_steps - 1,
-        value=0,
-        format="%d",
+        min_value=0, max_value=n_steps - 1, value=0,
         label_visibility="collapsed",
     )
     selected_time = time_coords[step_idx]
 
     st.markdown(f"""
-    <div class="timeline-bar">
-        <div>
-            <div class="metric-label">Échéance sélectionnée</div>
-            <div class="timeline-echo">{selected_time.strftime('%a %d/%m · %H:00 UTC')}</div>
-            <div class="metric-unit">+{step_idx}h depuis le run</div>
-        </div>
-    </div>
+    <div class="ech-label">{selected_time.strftime('%a %d/%m · %H:00 UTC')}</div>
+    <div style="font-size:0.72rem;color:var(--muted)">+{step_idx}h depuis le run</div>
     """, unsafe_allow_html=True)
 
-    # Navigation rapide
-    cols_nav = st.columns(3)
-    if cols_nav[0].button("⏮", use_container_width=True, help="Début"):
-        step_idx = 0
-    if cols_nav[1].button("▶", use_container_width=True, help="Suivant"):
-        step_idx = min(step_idx + 1, n_steps - 1)
-    if cols_nav[2].button("⏭", use_container_width=True, help="Fin"):
-        step_idx = n_steps - 1
+    st.markdown('<div style="height:1px;background:var(--border);margin:14px 0"></div>', unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.markdown('<div class="section-title">📋 Métadonnées</div>', unsafe_allow_html=True)
+    # Métadonnées run
+    st.markdown('<div style="font-size:0.68rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Run</div>', unsafe_allow_html=True)
     st.markdown(f"""
-    <div class="info-box">
-        <b>Run :</b> {run_date}<br>
+    <div class="info-block">
+        <b>Date :</b> {run_date}<br>
         <b>Région :</b> {region}<br>
         <b>Résolution :</b> 1.3 km<br>
-        <b>Échéances :</b> {n_steps} × 1h<br>
-        <b>Variables :</b> {', '.join(list(ds.data_vars)[:5])}
+        <b>Échéances :</b> {n_steps} × 1h
     </div>
     """, unsafe_allow_html=True)
 
+    st.markdown('<div style="height:1px;background:var(--border);margin:14px 0"></div>', unsafe_allow_html=True)
+
     # Légende IFM
-    st.markdown('<div class="section-title">📊 Niveaux IFM</div>', unsafe_allow_html=True)
-    levels = [
-        ("Faible",       "< 10",    "#43a047"),
-        ("Modéré",       "10–30",   "#ffb300"),
-        ("Fort",         "30–50",   "#ff7043"),
-        ("Très fort",    "50–80",   "#e53935"),
-        ("Exceptionnel", "> 80",    "#b71c1c"),
-    ]
-    for name, rng, col in levels:
+    st.markdown('<div style="font-size:0.68rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Niveaux IFM</div>', unsafe_allow_html=True)
+    for label, col, bg in [
+        ("Faible · < 10",        "#2e7d32", "#e8f5e9"),
+        ("Modéré · 10–30",       "#f57f17", "#fff8e1"),
+        ("Fort · 30–50",         "#e65100", "#fff3e0"),
+        ("Très fort · 50–80",    "#c62828", "#ffebee"),
+        ("Exceptionnel · > 80",  "#880e4f", "#fce4ec"),
+    ]:
         st.markdown(f"""
-        <div style="display:flex;align-items:center;gap:8px;margin:3px 0">
-            <div style="width:10px;height:10px;border-radius:2px;background:{col};flex-shrink:0"></div>
-            <div style="font-size:0.72rem;color:var(--muted)">{name} <span style="color:rgba(255,255,255,0.25)">({rng})</span></div>
-        </div>
-        """, unsafe_allow_html=True)
+        <div class="ifm-legend-row">
+            <div class="ifm-dot" style="background:{col}"></div>
+            <span>{label}</span>
+        </div>""", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────
-#  DONNÉES DE LA TRANCHE TEMPORELLE
+#  DONNÉES TRANCHE SÉLECTIONNÉE
 # ─────────────────────────────────────────────────────────────
 data_slice = ds.sel(time=selected_time)
 
-# Métriques pour la tranche sélectionnée
-ifm_vals  = float(data_slice['ifm'].mean())   if 'ifm'  in data_slice else 0
-temp_val  = float(data_slice['temp'].mean())  if 'temp' in data_slice else 0
-wind_val  = float(data_slice['wind'].mean())  if 'wind' in data_slice else 0
-hr_val    = float(data_slice['hr'].mean())    if 'hr'   in data_slice else 0
-rain_val  = float(data_slice['rain'].sum())   if 'rain' in data_slice else 0
-ifm_max   = float(data_slice['ifm'].max())    if 'ifm'  in data_slice else 0
+def safe_mean(var): return float(data_slice[var].mean()) if var in data_slice else 0
+def safe_max(var):  return float(data_slice[var].max())  if var in data_slice else 0
 
-level_label, level_color = ifm_level(ifm_vals)
+ifm_mean  = safe_mean('ifm')
+ifm_max   = safe_max('ifm')
+temp_val  = safe_mean('temp')
+wind_val  = safe_mean('wind')
+hr_val    = safe_mean('hr')
+rain_val  = float(data_slice['rain'].sum()) if 'rain' in data_slice else 0
 
-# Deltas vs étape précédente
+level_lbl, level_col, level_bg = ifm_level(ifm_mean)
+
+# Deltas
 if step_idx > 0:
-    prev_slice = ds.isel(time=step_idx - 1)
-    d_ifm  = ifm_vals - float(prev_slice['ifm'].mean())
-    d_temp = temp_val - float(prev_slice['temp'].mean())
-    d_wind = wind_val - float(prev_slice['wind'].mean())
+    prev = ds.isel(time=step_idx - 1)
+    d_ifm  = ifm_mean - float(prev['ifm'].mean())  if 'ifm'  in prev else 0
+    d_temp = temp_val - float(prev['temp'].mean()) if 'temp' in prev else 0
+    d_wind = wind_val - float(prev['wind'].mean()) if 'wind' in prev else 0
 else:
     d_ifm = d_temp = d_wind = 0
 
-def delta_html(val, unit='', invert=False):
-    if val == 0: return f'<span style="color:var(--muted)">→ stable</span>'
-    up = val > 0
-    cls = 'delta-up' if (up and not invert) or (not up and invert) else 'delta-down'
-    arrow = '↑' if up else '↓'
-    return f'<span class="metric-delta {cls}">{arrow} {abs(val):.1f}{unit}</span>'
+def delta_str(v, unit=''):
+    if abs(v) < 0.05: return '<span style="color:var(--muted)">stable</span>'
+    cls = 'up' if v > 0 else 'down'
+    arr = '↑' if v > 0 else '↓'
+    return f'<span class="{cls}">{arr} {abs(v):.1f}{unit}</span>'
 
 # ─────────────────────────────────────────────────────────────
-#  METRICS BAR
+#  HEADER
+# ─────────────────────────────────────────────────────────────
+now_utc = datetime.utcnow().strftime('%d/%m/%Y %H:%M UTC')
+st.markdown(f"""
+<div class="app-header">
+    <div>
+        <div class="app-header-title">Indice Forêt Météo — AROME 1.3 km</div>
+        <div class="app-header-meta">{selected_time.strftime('%A %d %B %Y · %H:00 UTC')} · +{step_idx}h · {region}</div>
+    </div>
+    <div class="app-header-right">
+        Run : {run_date}<br>Dernière maj : {now_utc}
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────
+#  MÉTRIQUES
 # ─────────────────────────────────────────────────────────────
 st.markdown(f"""
-<div class="metric-grid">
-    <div class="metric-card">
+<div class="metric-row">
+    <div class="metric-card accent">
         <div class="metric-label">IFM moyen</div>
-        <div class="metric-value" style="color:{level_color}">{ifm_vals:.1f}</div>
+        <div class="metric-val" style="color:{level_col}">{ifm_mean:.1f}</div>
         <div class="metric-unit">
-            <span class="ifm-badge" style="background:{level_color}22;color:{level_color}">{level_label}</span>
+            <span class="ifm-badge" style="background:{level_bg};color:{level_col}">{level_lbl}</span>
         </div>
-        {delta_html(d_ifm)}
+        <div class="metric-delta">{delta_str(d_ifm)}</div>
     </div>
     <div class="metric-card">
         <div class="metric-label">IFM max</div>
-        <div class="metric-value">{ifm_max:.1f}</div>
+        <div class="metric-val">{ifm_max:.1f}</div>
         <div class="metric-unit">valeur de pointe</div>
     </div>
     <div class="metric-card">
         <div class="metric-label">Température</div>
-        <div class="metric-value">{temp_val:.1f}°</div>
-        <div class="metric-unit">°C · moyenne</div>
-        {delta_html(d_temp, '°')}
+        <div class="metric-val">{temp_val:.1f}°</div>
+        <div class="metric-unit">°C · moy. spatiale</div>
+        <div class="metric-delta">{delta_str(d_temp, '°')}</div>
     </div>
     <div class="metric-card">
-        <div class="metric-label">Vent moyen</div>
-        <div class="metric-value">{wind_val:.0f}</div>
-        <div class="metric-unit">km/h</div>
-        {delta_html(d_wind, 'km/h')}
+        <div class="metric-label">Vent</div>
+        <div class="metric-val">{wind_val:.0f}</div>
+        <div class="metric-unit">km/h · moy. spatiale</div>
+        <div class="metric-delta">{delta_str(d_wind, ' km/h')}</div>
     </div>
     <div class="metric-card">
-        <div class="metric-label">Humidité relative</div>
-        <div class="metric-value">{hr_val:.0f}%</div>
-        <div class="metric-unit">moyenne spatiale</div>
+        <div class="metric-label">Humidité</div>
+        <div class="metric-val">{hr_val:.0f}%</div>
+        <div class="metric-unit">HR · moy. spatiale</div>
     </div>
     <div class="metric-card">
         <div class="metric-label">Précipitations</div>
-        <div class="metric-value">{rain_val:.1f}</div>
+        <div class="metric-val">{rain_val:.1f}</div>
         <div class="metric-unit">mm · cumul domaine</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────
-#  TABS
+#  COLORSCALE IFM
 # ─────────────────────────────────────────────────────────────
-tab1, tab2, tab3 = st.tabs([
-    "🗺️  Cartographie IFM",
-    "📈  Séries temporelles",
-    "🔬  Analyse multi-variables",
-])
+ifm_cs = [
+    [0.00, '#1b5e20'],
+    [0.10, '#43a047'],
+    [0.25, '#fdd835'],
+    [0.38, '#fb8c00'],
+    [0.50, '#e53935'],
+    [0.70, '#b71c1c'],
+    [1.00, '#880e4f'],
+]
 
 # ══════════════════════════════════════════════════════════════
-#  TAB 1 — CARTE
+#  PAGE 1 — CARTOGRAPHIE
 # ══════════════════════════════════════════════════════════════
-with tab1:
+if page == "🗺  Cartographie":
 
-    col_map, col_info = st.columns([3, 1])
-
-    with col_map:
-        st.markdown(
-            f'<div class="section-title">Indice Forêt Météo — {selected_time.strftime("%d %B %Y · %H:00 UTC")} (+{step_idx}h)</div>',
-            unsafe_allow_html=True
-        )
-
-        # Colorscale IFM custom (vert → jaune → orange → rouge → bordeaux)
-        ifm_colorscale = [
-            [0.00, '#1b5e20'],
-            [0.12, '#43a047'],
-            [0.25, '#ffee58'],
-            [0.37, '#ffb300'],
-            [0.50, '#ff7043'],
-            [0.65, '#e53935'],
-            [0.80, '#b71c1c'],
-            [1.00, '#4a0000'],
-        ]
-
-        fig_map = px.imshow(
-            data_slice['ifm'],
-            x=ds.lon.values,
-            y=ds.lat.values,
-            color_continuous_scale=ifm_colorscale,
-            zmin=0, zmax=100,
-            origin='lower',
-            aspect='equal',
-            labels=dict(color='IFM', x='Longitude', y='Latitude'),
-        )
-
-        fig_map.update_traces(
-            hovertemplate=(
-                '<b>IFM : %{z:.1f}</b><br>'
-                'Lon : %{x:.3f}° | Lat : %{y:.3f}°'
-                '<extra></extra>'
-            )
-        )
-
-        # Ligne de contour danger (IFM > 50)
-        fig_map.add_trace(go.Contour(
-            z=data_slice['ifm'].values,
-            x=ds.lon.values,
-            y=ds.lat.values,
-            contours=dict(
-                start=50, end=50, size=1,
-                coloring='none',
-                showlabels=True,
-                labelfont=dict(size=9, color='white'),
+    # Carte pleine largeur
+    fig_map = px.imshow(
+        data_slice['ifm'],
+        x=ds.lon.values,
+        y=ds.lat.values,
+        color_continuous_scale=ifm_cs,
+        zmin=0, zmax=100,
+        origin='lower',
+        aspect='equal',
+        labels=dict(color='IFM', x='Longitude', y='Latitude'),
+    )
+    fig_map.update_traces(
+        hovertemplate='<b>IFM : %{z:.1f}</b><br>Lon : %{x:.3f}° | Lat : %{y:.3f}°<extra></extra>'
+    )
+    # Contour danger IFM > 50
+    fig_map.add_trace(go.Contour(
+        z=data_slice['ifm'].values,
+        x=ds.lon.values,
+        y=ds.lat.values,
+        contours=dict(start=50, end=50, size=1, coloring='none',
+                      showlabels=True, labelfont=dict(size=9, color='#333')),
+        line=dict(color='rgba(0,0,0,0.5)', width=1.5, dash='dot'),
+        showscale=False,
+        hoverinfo='skip',
+    ))
+    fig_map.update_layout(
+        **clean_layout(
+            height=600,
+            margin=dict(l=0, r=0, t=0, b=0),
+            coloraxis=dict(
+                colorbar=dict(
+                    title=dict(text='IFM', font=dict(size=11)),
+                    tickvals=[0, 10, 30, 50, 80, 100],
+                    ticktext=['0', '10', '30', '50', '80', '100'],
+                    thickness=14, len=0.85,
+                    bgcolor='rgba(255,255,255,0.9)',
+                    bordercolor='#e0e0e0', borderwidth=1,
+                    tickfont=dict(size=10),
+                )
             ),
-            line=dict(color='rgba(255,255,255,0.7)', width=1.5, dash='dot'),
-            showscale=False,
-            name='Seuil danger (50)',
-            hoverinfo='skip',
-        ))
-
-        fig_map.update_layout(
-            **dark_plotly_layout(
-                height=580,
-                margin=dict(l=0, r=0, t=0, b=0),
-                coloraxis=dict(
-                    colorbar=dict(
-                        title=dict(text='IFM', font=dict(size=10)),
-                        tickfont=dict(size=9),
-                        tickvals=[0, 10, 30, 50, 80, 100],
-                        ticktext=['0', '10', '30', '50', '80', '100'],
-                        thickness=14,
-                        len=0.85,
-                        bgcolor='rgba(13,15,20,0.8)',
-                        bordercolor='rgba(255,255,255,0.1)',
-                        borderwidth=1,
-                    )
-                ),
-                xaxis=dict(title='Longitude', showgrid=False),
-                yaxis=dict(title='Latitude',  showgrid=False),
-            )
+            xaxis=dict(title='Longitude', showgrid=False, linecolor='#d0d0d0'),
+            yaxis=dict(title='Latitude',  showgrid=False, linecolor='#d0d0d0'),
         )
-        st.plotly_chart(fig_map, use_container_width=True, config={'displayModeBar': False})
+    )
+    st.plotly_chart(fig_map, use_container_width=True, config={'displayModeBar': False})
 
-    with col_info:
-        st.markdown('<div class="section-title" style="margin-top:2.5rem">Distribution IFM</div>', unsafe_allow_html=True)
+    # Statistiques sous la carte
+    ifm_flat = data_slice['ifm'].values.flatten()
+    ifm_flat = ifm_flat[~np.isnan(ifm_flat)]
+    pct_d = (ifm_flat > 50).mean() * 100
+    pct_f = ((ifm_flat > 30) & (ifm_flat <= 50)).mean() * 100
+    pct_m = ((ifm_flat > 10) & (ifm_flat <= 30)).mean() * 100
+    pct_o = (ifm_flat <= 10).mean() * 100
 
-        # Histogramme de distribution
-        ifm_flat = data_slice['ifm'].values.flatten()
-        ifm_flat = ifm_flat[~np.isnan(ifm_flat)]
-
-        fig_hist = go.Figure(go.Histogram(
-            x=ifm_flat,
-            nbinsx=30,
-            marker=dict(
-                color=ifm_flat,
-                colorscale=ifm_colorscale,
-                cmin=0, cmax=100,
-                line=dict(width=0),
-            ),
-        ))
-        # Ligne de seuil danger
-        fig_hist.add_vline(x=50, line_color='rgba(255,255,255,0.4)', line_dash='dot', line_width=1)
-        fig_hist.add_vline(x=30, line_color='rgba(255,180,0,0.3)',   line_dash='dot', line_width=1)
-
-        fig_hist.update_layout(
-            **dark_plotly_layout(
-                height=200,
-                margin=dict(l=0, r=0, t=20, b=0),
-                title=dict(text='Fréquence par classe', font=dict(size=10), x=0),
-                showlegend=False,
-                xaxis=dict(title='IFM', title_font=dict(size=9)),
-                yaxis=dict(title='Nb pixels', title_font=dict(size=9)),
-                bargap=0.05,
-            )
-        )
-        st.plotly_chart(fig_hist, use_container_width=True, config={'displayModeBar': False})
-
-        # Stats spatiales
-        pct_danger = (ifm_flat > 50).mean() * 100
-        pct_fort   = ((ifm_flat > 30) & (ifm_flat <= 50)).mean() * 100
-        pct_ok     = (ifm_flat <= 30).mean() * 100
-
-        st.markdown(f"""
-        <div class="section-title">Répartition surface</div>
-        <div class="info-box">
-            <div style="margin-bottom:6px">
-                <div style="font-size:0.65rem;color:var(--muted)">DANGER (IFM > 50)</div>
-                <div style="font-size:1.1rem;font-weight:700;color:#e53935">{pct_danger:.1f}%</div>
-                <div style="background:#e5393533;border-radius:2px;height:4px;margin-top:2px">
-                    <div style="background:#e53935;height:4px;border-radius:2px;width:{pct_danger:.1f}%"></div>
-                </div>
-            </div>
-            <div style="margin-bottom:6px">
-                <div style="font-size:0.65rem;color:var(--muted)">FORT (30–50)</div>
-                <div style="font-size:1.1rem;font-weight:700;color:#ff7043">{pct_fort:.1f}%</div>
-                <div style="background:#ff704333;border-radius:2px;height:4px;margin-top:2px">
-                    <div style="background:#ff7043;height:4px;border-radius:2px;width:{pct_fort:.1f}%"></div>
-                </div>
-            </div>
-            <div>
-                <div style="font-size:0.65rem;color:var(--muted)">MODÉRÉ/FAIBLE (≤ 30)</div>
-                <div style="font-size:1.1rem;font-weight:700;color:#43a047">{pct_ok:.1f}%</div>
-                <div style="background:#43a04733;border-radius:2px;height:4px;margin-top:2px">
-                    <div style="background:#43a047;height:4px;border-radius:2px;width:{pct_ok:.1f}%"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="section-title">Statistiques spatiales</div>
-        <div class="info-box" style="font-size:0.7rem">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
-                <div>Min</div>  <div style="color:var(--text);text-align:right">{ifm_flat.min():.1f}</div>
-                <div>Max</div>  <div style="color:var(--accent);text-align:right">{ifm_flat.max():.1f}</div>
-                <div>Moy</div>  <div style="color:var(--text);text-align:right">{ifm_flat.mean():.1f}</div>
-                <div>P90</div>  <div style="color:var(--warn);text-align:right">{np.percentile(ifm_flat,90):.1f}</div>
-                <div>P95</div>  <div style="color:var(--danger);text-align:right">{np.percentile(ifm_flat,95):.1f}</div>
-                <div>σ</div>    <div style="color:var(--text);text-align:right">{ifm_flat.std():.1f}</div>
-            </div>
+    c1, c2, c3, c4, c5 = st.columns(5)
+    for col, label, pct, color, bg in [
+        (c1, "Faible (≤10)",       pct_o, "#2e7d32", "#e8f5e9"),
+        (c2, "Modéré (10–30)",     pct_m, "#f57f17", "#fff8e1"),
+        (c3, "Fort (30–50)",       pct_f, "#e65100", "#fff3e0"),
+        (c4, "Danger (50–80)",     pct_d, "#c62828", "#ffebee"),
+        (c5, "Exceptionnel (>80)", (ifm_flat > 80).mean()*100, "#880e4f", "#fce4ec"),
+    ]:
+        col.markdown(f"""
+        <div style="background:{bg};border:1px solid {color}33;border-radius:5px;
+                    padding:10px 12px;text-align:center">
+            <div style="font-size:0.65rem;font-weight:700;color:{color};
+                        text-transform:uppercase;letter-spacing:0.08em">{label}</div>
+            <div style="font-size:1.4rem;font-weight:700;color:{color};margin-top:2px">{pct:.1f}%</div>
+            <div style="background:{color};height:3px;border-radius:2px;
+                        margin-top:6px;opacity:0.5;width:{min(pct,100):.0f}%"></div>
         </div>
         """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════
-#  TAB 2 — SÉRIES TEMPORELLES
+#  PAGE 2 — SÉRIES TEMPORELLES
 # ══════════════════════════════════════════════════════════════
-with tab2:
-    st.markdown('<div class="section-title">Évolution temporelle — Moyennes spatiales sur le domaine</div>', unsafe_allow_html=True)
+elif page == "📈  Séries temporelles":
 
-    # Ligne verticale = échéance sélectionnée
-    vline_x = selected_time
+    vline = selected_time
 
-    # ── IFM avec enveloppe min/max ──
+    # IFM avec enveloppe
     if 'ifm' in ds:
-        ifm_mean = ds['ifm'].mean(dim=['lat','lon']).to_series()
-        ifm_min  = ds['ifm'].min(dim=['lat','lon']).to_series()
-        ifm_max_s= ds['ifm'].max(dim=['lat','lon']).to_series()
+        ifm_s    = ds['ifm'].mean(dim=['lat','lon']).to_series()
+        ifm_mn   = ds['ifm'].min(dim=['lat','lon']).to_series()
+        ifm_mx   = ds['ifm'].max(dim=['lat','lon']).to_series()
         ifm_p90  = ds['ifm'].quantile(0.9, dim=['lat','lon']).to_series()
 
         fig_ifm = go.Figure()
-
-        # Zone min/max
+        # Enveloppe min/max
         fig_ifm.add_trace(go.Scatter(
-            x=list(ifm_mean.index) + list(ifm_mean.index[::-1]),
-            y=list(ifm_max_s.values) + list(ifm_min.values[::-1]),
-            fill='toself',
-            fillcolor='rgba(255,87,34,0.08)',
-            line=dict(width=0),
-            name='Min/Max',
-            hoverinfo='skip',
+            x=list(ifm_s.index) + list(ifm_s.index[::-1]),
+            y=list(ifm_mx.values) + list(ifm_mn.values[::-1]),
+            fill='toself', fillcolor='rgba(192,57,43,0.08)',
+            line=dict(width=0), name='Min/Max', hoverinfo='skip',
         ))
-        # P90
         fig_ifm.add_trace(go.Scatter(
             x=ifm_p90.index, y=ifm_p90.values,
-            line=dict(color='rgba(255,87,34,0.4)', width=1, dash='dot'),
+            line=dict(color='rgba(192,57,43,0.35)', width=1, dash='dot'),
             name='P90',
         ))
-        # Moyenne
         fig_ifm.add_trace(go.Scatter(
-            x=ifm_mean.index, y=ifm_mean.values,
-            line=dict(color='#ff5722', width=2.5),
-            name='Moyenne',
-            hovertemplate='<b>%{x|%d/%m %H:00}</b><br>IFM moy : %{y:.1f}<extra></extra>',
+            x=ifm_s.index, y=ifm_s.values,
+            line=dict(color='#c0392b', width=2.5), name='Moyenne',
+            hovertemplate='<b>%{x|%d/%m %H:00}</b><br>IFM : %{y:.1f}<extra></extra>',
         ))
-        # Ligne seuil danger
-        fig_ifm.add_hline(y=50, line_color='rgba(229,57,53,0.5)', line_dash='dash', line_width=1,
-                          annotation_text='Seuil danger', annotation_font_size=9,
-                          annotation_font_color='rgba(229,57,53,0.7)')
-        fig_ifm.add_hline(y=30, line_color='rgba(255,180,0,0.3)', line_dash='dot', line_width=1)
-        # Curseur temps
-        fig_ifm.add_vline(x=vline_x, line_color='rgba(255,255,255,0.3)', line_width=1)
+        fig_ifm.add_hline(y=50, line_color='rgba(180,0,0,0.4)', line_dash='dash',
+                          line_width=1, annotation_text='Seuil danger (50)',
+                          annotation_font=dict(size=10, color='#c0392b'))
+        fig_ifm.add_hline(y=30, line_color='rgba(230,120,0,0.3)', line_dash='dot', line_width=1)
+        fig_ifm.add_vline(x=vline, line_color='rgba(0,0,0,0.25)', line_width=1)
 
-        fig_ifm.update_layout(
-            **dark_plotly_layout(
-                height=280,
-                title=dict(text='Indice Forêt Météo (IFM)', font=dict(size=12, family='Inter'), x=0),
-                yaxis=dict(title='IFM', range=[0, None]),
-            )
-        )
+        fig_ifm.update_layout(**clean_layout(
+            height=280,
+            title=dict(text='Indice Forêt Météo — évolution temporelle',
+                       font=dict(size=13, family='Source Sans 3'), x=0),
+            yaxis=dict(title='IFM', range=[0, None]),
+        ))
         st.plotly_chart(fig_ifm, use_container_width=True, config={'displayModeBar': False})
 
-    # ── Température + Humidité ──
     col_a, col_b = st.columns(2)
-
     with col_a:
         if 'temp' in ds and 'hr' in ds:
             fig_th = make_subplots(specs=[[{"secondary_y": True}]])
             temp_s = ds['temp'].mean(dim=['lat','lon']).to_series()
             hr_s   = ds['hr'].mean(dim=['lat','lon']).to_series()
-
             fig_th.add_trace(go.Scatter(
                 x=temp_s.index, y=temp_s.values,
-                line=dict(color='#ff8c42', width=2),
-                name='Temp (°C)',
-                hovertemplate='%{y:.1f}°C<extra>Température</extra>',
+                line=dict(color='#e65100', width=2), name='Temp (°C)',
             ), secondary_y=False)
-
             fig_th.add_trace(go.Scatter(
                 x=hr_s.index, y=hr_s.values,
-                line=dict(color='#42a5f5', width=1.5, dash='dot'),
-                name='HR (%)',
-                hovertemplate='%{y:.0f}%<extra>Humidité</extra>',
+                line=dict(color='#1565c0', width=1.5, dash='dot'), name='HR (%)',
             ), secondary_y=True)
-
-            fig_th.add_vline(x=vline_x, line_color='rgba(255,255,255,0.3)', line_width=1)
-
-            fig_th.update_layout(**dark_plotly_layout(
-                height=240,
-                title=dict(text='Température & Humidité relative', font=dict(size=11, family='Inter'), x=0),
+            fig_th.add_vline(x=vline, line_color='rgba(0,0,0,0.2)', line_width=1)
+            fig_th.update_layout(**clean_layout(
+                height=250,
+                title=dict(text='Température & Humidité', font=dict(size=12, family='Source Sans 3'), x=0),
             ))
-            fig_th.update_yaxes(title_text='°C', secondary_y=False,
-                                gridcolor='rgba(255,255,255,0.05)')
-            fig_th.update_yaxes(title_text='%', secondary_y=True, showgrid=False)
-
+            fig_th.update_yaxes(title_text='°C', secondary_y=False, gridcolor='#ebebeb')
+            fig_th.update_yaxes(title_text='HR (%)', secondary_y=True, showgrid=False)
             st.plotly_chart(fig_th, use_container_width=True, config={'displayModeBar': False})
 
     with col_b:
         if 'wind' in ds:
-            wind_s = ds['wind'].mean(dim=['lat','lon']).to_series()
-            wind_max_s = ds['wind'].max(dim=['lat','lon']).to_series()
-
-            fig_wind = go.Figure()
-            fig_wind.add_trace(go.Scatter(
-                x=wind_s.index, y=wind_max_s.values,
-                fill='tozeroy',
-                fillcolor='rgba(100,181,246,0.06)',
-                line=dict(width=0),
-                name='Max vent',
-                hoverinfo='skip',
+            wind_s   = ds['wind'].mean(dim=['lat','lon']).to_series()
+            wind_mx  = ds['wind'].max(dim=['lat','lon']).to_series()
+            fig_w = go.Figure()
+            fig_w.add_trace(go.Scatter(
+                x=wind_s.index, y=wind_mx.values,
+                fill='tozeroy', fillcolor='rgba(21,101,192,0.06)',
+                line=dict(width=0), name='Max', hoverinfo='skip',
             ))
-            fig_wind.add_trace(go.Scatter(
+            fig_w.add_trace(go.Scatter(
                 x=wind_s.index, y=wind_s.values,
-                line=dict(color='#64b5f6', width=2),
-                name='Vent moy (km/h)',
-                hovertemplate='%{y:.1f} km/h<extra>Vent moyen</extra>',
+                line=dict(color='#1565c0', width=2), name='Vent moy (km/h)',
             ))
-            fig_wind.add_vline(x=vline_x, line_color='rgba(255,255,255,0.3)', line_width=1)
-
-            fig_wind.update_layout(**dark_plotly_layout(
-                height=240,
-                title=dict(text='Vent (km/h)', font=dict(size=11, family='Inter'), x=0),
+            fig_w.add_vline(x=vline, line_color='rgba(0,0,0,0.2)', line_width=1)
+            fig_w.update_layout(**clean_layout(
+                height=250,
+                title=dict(text='Vent (km/h)', font=dict(size=12, family='Source Sans 3'), x=0),
                 yaxis=dict(title='km/h'),
             ))
-            st.plotly_chart(fig_wind, use_container_width=True, config={'displayModeBar': False})
+            st.plotly_chart(fig_w, use_container_width=True, config={'displayModeBar': False})
 
-    # ── Tableau récapitulatif ──
+    # Tableau — sans background_gradient (matplotlib requis)
     st.markdown('<div class="section-title">Tableau des échéances</div>', unsafe_allow_html=True)
-
     display_cols = [c for c in ['ifm', 'temp', 'wind', 'hr', 'rain'] if c in df_mean.columns]
-    df_display = df_mean[display_cols].copy()
-    df_display.index = df_display.index.strftime('%a %d/%m · %H:00')
-    df_display.columns = [c.upper() for c in df_display.columns]
-
-    def style_df(val, col):
-        if col == 'IFM':
-            _, c = ifm_level(val)
-            return f'color: {c}; font-weight: bold'
-        return ''
-
-    styled = df_display.style\
-        .format(precision=1)\
-        .background_gradient(subset=['IFM'] if 'IFM' in df_display.columns else [],
-                             cmap='YlOrRd', vmin=0, vmax=100)\
-        .set_properties(**{
-            'background-color': '#13161e',
-            'color': '#e8eaf0',
-            'border': '1px solid rgba(255,255,255,0.05)',
-            'font-family': 'JetBrains Mono',
-            'font-size': '0.75rem',
-        })
-
-    st.dataframe(styled, use_container_width=True, height=300)
+    df_disp = df_mean[display_cols].copy().round(1)
+    df_disp.index = df_disp.index.strftime('%a %d/%m · %H:00')
+    df_disp.columns = [c.upper() for c in df_disp.columns]
+    st.dataframe(df_disp, use_container_width=True, height=280)
 
 # ══════════════════════════════════════════════════════════════
-#  TAB 3 — ANALYSE MULTI-VARIABLES
+#  PAGE 3 — ANALYSE
 # ══════════════════════════════════════════════════════════════
-with tab3:
-    st.markdown('<div class="section-title">Corrélations & Distributions — échéance sélectionnée</div>', unsafe_allow_html=True)
+elif page == "🔬  Analyse":
 
-    available_vars = [v for v in ['ifm', 'temp', 'wind', 'hr', 'rain'] if v in data_slice]
+    available_vars = [v for v in ['ifm','temp','wind','hr','rain'] if v in data_slice]
 
     col_c1, col_c2 = st.columns(2)
 
     with col_c1:
+        st.markdown('<div class="section-title">IFM vs Température — coloré par vent</div>', unsafe_allow_html=True)
         if len(available_vars) >= 2:
-            # Scatter IFM vs Température coloré par vent
-            df_scatter = pd.DataFrame({
-                'ifm':  data_slice['ifm'].values.flatten()  if 'ifm'  in data_slice else [],
-                'temp': data_slice['temp'].values.flatten() if 'temp' in data_slice else [],
-                'wind': data_slice['wind'].values.flatten() if 'wind' in data_slice else [],
-                'hr':   data_slice['hr'].values.flatten()   if 'hr'   in data_slice else [],
+            df_sc = pd.DataFrame({
+                v: data_slice[v].values.flatten() for v in ['ifm','temp','wind','hr']
+                if v in data_slice
             }).dropna()
-
-            # Sous-échantillonnage pour la perf
-            if len(df_scatter) > 5000:
-                df_scatter = df_scatter.sample(5000, random_state=42)
-
-            fig_scat = go.Figure(go.Scatter(
-                x=df_scatter['temp'],
-                y=df_scatter['ifm'],
-                mode='markers',
+            if len(df_sc) > 5000:
+                df_sc = df_sc.sample(5000, random_state=42)
+            fig_sc = go.Figure(go.Scatter(
+                x=df_sc['temp'], y=df_sc['ifm'], mode='markers',
                 marker=dict(
-                    color=df_scatter['wind'],
-                    colorscale='Blues',
-                    size=3,
-                    opacity=0.5,
-                    colorbar=dict(title='Vent', thickness=10, len=0.7),
+                    color=df_sc['wind'] if 'wind' in df_sc else '#c0392b',
+                    colorscale='Blues', size=3, opacity=0.45,
+                    colorbar=dict(title='Vent (km/h)', thickness=12, len=0.7,
+                                  tickfont=dict(size=10)),
                 ),
                 hovertemplate='T : %{x:.1f}°C | IFM : %{y:.1f}<extra></extra>',
             ))
-            fig_scat.update_layout(**dark_plotly_layout(
+            fig_sc.update_layout(**clean_layout(
                 height=320,
-                title=dict(text='IFM vs Température (couleur = vent)', font=dict(size=11, family='Inter'), x=0),
                 xaxis=dict(title='Température (°C)'),
                 yaxis=dict(title='IFM'),
             ))
-            st.plotly_chart(fig_scat, use_container_width=True, config={'displayModeBar': False})
+            st.plotly_chart(fig_sc, use_container_width=True, config={'displayModeBar': False})
 
     with col_c2:
-        # Heatmap des corrélations
+        st.markdown('<div class="section-title">Matrice de corrélation</div>', unsafe_allow_html=True)
         if len(available_vars) >= 3:
-            df_corr_data = pd.DataFrame({
+            df_corr = pd.DataFrame({
                 v: data_slice[v].values.flatten() for v in available_vars
-            }).dropna()
-            corr = df_corr_data.corr()
-
-            fig_corr = go.Figure(go.Heatmap(
-                z=corr.values,
-                x=[v.upper() for v in corr.columns],
-                y=[v.upper() for v in corr.index],
-                colorscale=[
-                    [0, '#1565c0'], [0.5, '#13161e'], [1, '#b71c1c']
-                ],
+            }).dropna().corr()
+            fig_co = go.Figure(go.Heatmap(
+                z=df_corr.values,
+                x=[v.upper() for v in df_corr.columns],
+                y=[v.upper() for v in df_corr.index],
+                colorscale=[[0,'#1565c0'],[0.5,'#f5f5f5'],[1,'#c62828']],
                 zmin=-1, zmax=1,
-                text=corr.values.round(2),
+                text=df_corr.values.round(2),
                 texttemplate='%{text}',
-                textfont=dict(size=11),
-                hoverongaps=False,
+                textfont=dict(size=11, color='#1a1a2e'),
             ))
-            fig_corr.update_layout(**dark_plotly_layout(
+            fig_co.update_layout(**clean_layout(
                 height=320,
-                title=dict(text='Matrice de corrélation (pixels)', font=dict(size=11, family='Inter'), x=0),
-                margin=dict(l=40, r=10, t=40, b=10),
+                margin=dict(l=40, r=10, t=20, b=10),
             ))
-            st.plotly_chart(fig_corr, use_container_width=True, config={'displayModeBar': False})
+            st.plotly_chart(fig_co, use_container_width=True, config={'displayModeBar': False})
 
-    # Box plots par variable
-    st.markdown('<div class="section-title">Distributions spatiales — comparaison temporelle (toutes échéances)</div>', unsafe_allow_html=True)
-
+    # Box plots IFM par échéance
+    st.markdown('<div class="section-title">Distribution IFM par échéance</div>', unsafe_allow_html=True)
     if 'ifm' in ds:
-        # Sélection d'échéances régulières pour éviter trop de données
         step_sel = max(1, n_steps // 12)
-        times_sel = time_coords[::step_sel]
-
         fig_box = go.Figure()
-        for t in times_sel:
+        for t in time_coords[::step_sel]:
             vals = ds['ifm'].sel(time=t).values.flatten()
             vals = vals[~np.isnan(vals)]
             fig_box.add_trace(go.Box(
-                y=vals,
-                name=pd.Timestamp(t).strftime('%d/%m %Hh'),
-                marker_color='rgba(255,87,34,0.6)',
-                line=dict(color='#ff5722', width=1),
-                fillcolor='rgba(255,87,34,0.1)',
-                boxpoints=False,
-                whiskerwidth=0.5,
+                y=vals, name=pd.Timestamp(t).strftime('%d/%m %Hh'),
+                marker_color='rgba(192,57,43,0.5)',
+                line=dict(color='#c0392b', width=1),
+                fillcolor='rgba(192,57,43,0.08)',
+                boxpoints=False, whiskerwidth=0.5,
             ))
-
-        fig_box.add_hline(y=50, line_color='rgba(229,57,53,0.4)', line_dash='dash', line_width=1)
-        fig_box.update_layout(**dark_plotly_layout(
+        fig_box.add_hline(y=50, line_color='rgba(180,0,0,0.35)', line_dash='dash', line_width=1)
+        fig_box.update_layout(**clean_layout(
             height=300,
-            title=dict(text='Distribution IFM par échéance (1 sur {})'.format(step_sel), font=dict(size=11, family='Inter'), x=0),
             showlegend=False,
             xaxis=dict(title='Échéance', tickangle=-45),
             yaxis=dict(title='IFM'),
@@ -1045,13 +862,10 @@ with tab3:
 #  FOOTER
 # ─────────────────────────────────────────────────────────────
 st.markdown(f"""
-<div style="margin-top:2rem;padding:12px 16px;border-top:1px solid var(--border);
-            display:flex;justify-content:space-between;align-items:center">
-    <div style="font-size:0.65rem;color:var(--muted)">
-        🔥 IFM · AROME 1.3 km · Données Météo-France
-    </div>
-    <div style="font-size:0.65rem;color:var(--muted)">
-        Généré le {now_utc} · Cache 1h
-    </div>
+<div style="margin-top:1.5rem;padding:8px 0;border-top:1px solid var(--border);
+            display:flex;justify-content:space-between;
+            font-size:0.65rem;color:var(--muted)">
+    <span>IFM · AROME 1.3 km · Données Météo-France</span>
+    <span>Généré le {now_utc} · Cache 1h</span>
 </div>
 """, unsafe_allow_html=True)
