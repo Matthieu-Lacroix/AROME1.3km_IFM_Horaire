@@ -37,27 +37,43 @@ jobs:
           MF_CLIENT_SECRET: ${{ secrets.MF_CLIENT_SECRET }}
         run: python calcul_ifm.py
 
-      - name: Sauvegarde CSV et NetCDF (Artifacts)
+      - name: Sauvegarde Artifacts (Optionnel - reste sur GitHub)
         uses: actions/upload-artifact@v4
         with:
           name: ifm-results-${{ github.run_number }}
           path: |
             ifm_*.csv
-            netcdf_*.zip       
-            retention-days: 30          
-            overwrite: true
-            
-      - name: Commit du fichier NetCDF complet
+            netcdf_*.zip
+          retention-days: 7
+          overwrite: true
+
+      - name: Création du résumé et NetCDF complet
+        run: |
+          # 1. Créer le résumé (ton code existant)
+          echo "# IFM Results - $(date +%Y-%m-%d_%H:%M)" > results_summary.md
+          echo "Run: $(date -Iseconds)" >> results_summary.md
+          
+          # 2. On prépare le fichier NetCDF unique à la racine
+          # On vérifie si le fichier existe avant de copier
+          if [ -f export_netcdf/arome_fwi_complet.nc ]; then
+            cp export_netcdf/arome_fwi_complet.nc arome_fwi_complet.nc
+          fi
+
+      - name: Commit et Push (Version Robuste)
         run: |
           git config --local user.name "GitHub Action"
           git config --local user.email "action@github.com"
           
-          # On ne veut garder que le fichier complet à la racine ou dans un dossier fixe
-          # On déplace le fichier pour qu'il ait toujours le même nom (écrasement de l'ancien)
-          cp export_netcdf/arome_fwi_complet.nc arome_fwi_complet.nc
-          
-          # On ajoute uniquement le fichier .nc fixe et le résumé
+          # On ajoute seulement les deux fichiers voulus
           git add arome_fwi_complet.nc results_summary.md
           
-          # On commit seulement s'il y a des changements
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update IFM Data $(date +%Y-%m-%d_%H:%M)" && git push)
+          # On vérifie s'il y a vraiment des changements
+          if ! git diff --quiet --staged; then
+            git commit -m "Update IFM Data & Summary $(date +%Y-%m-%d_%H:%M)"
+            
+            # LE FIX : On "pull" avec rebase pour synchroniser avant de push
+            git pull --rebase origin main
+            git push origin main
+          else
+            echo "Aucun changement détecté, rien à pusher."
+          fi
