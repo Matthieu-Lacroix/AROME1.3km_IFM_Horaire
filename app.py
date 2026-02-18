@@ -235,7 +235,7 @@ def create_raster_overlay(data_arr, cmap_name='RdYlGn_r'):
         vmin, vmax = 0, 1
     norm_data = np.clip((data - vmin) / (vmax - vmin), 0, 1)
     norm_data = np.nan_to_num(norm_data, nan=0.0)
-    cmap = cm.get_cmap(cmap_name)
+    cmap = cm.colormaps[cmap_name]
     rgba = cmap(norm_data)
     rgba[..., 3] = np.where(valid_mask, 0.7, 0)
     img = (np.clip(rgba, 0, 1) * 255).astype(np.uint8)
@@ -363,12 +363,12 @@ try:
     fig.update_xaxes(showgrid=True, gridcolor='#ebebeb')
     fig.update_yaxes(showgrid=True, gridcolor='#ebebeb')
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     # Tableau
     st.markdown('<div class="section-title">Tableau des échéances</div>', unsafe_allow_html=True)
     df_disp = df.copy().round(1)
-    st.dataframe(df_disp, use_container_width=True, height=250)
+    st.dataframe(df_disp, width='stretch', height=250)
 
 except Exception as e:
     st.error(f"Erreur graphiques : {e}")
