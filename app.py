@@ -145,16 +145,13 @@ def create_raster_overlay(data_arr, var_key):
     if not np.any(valid_mask): return None, None
     
     if var_key == "ifm":
-        # Classification stricte de l'IFM
-        colors = ['#22c55e', '#eab308', '#f97316', '#e11d48', '#7f1d1d'] # Vert, Jaune, Orange, Rose/Rouge, Rouge Foncé
+        colors = ['#22c55e', '#eab308', '#f97316', '#e11d48', '#7f1d1d']
         bounds = [0, 5.2, 11.2, 21.3, 38, max(np.nanmax(data), 50)]
         cmap = mcolors.ListedColormap(colors)
         norm = mcolors.BoundaryNorm(bounds, cmap.N)
-        
         rgba = cmap(norm(data))
         vrange = (0, bounds[-1])
     else:
-        # Variables continues standards
         cmap_name = {"temp": "RdYlBu_r", "wind": "Blues", "hr": "GnBu"}.get(var_key, "viridis")
         vmin, vmax = np.nanpercentile(data, [2, 98])
         if vmin >= vmax: vmin, vmax = 0, 1
@@ -164,7 +161,7 @@ def create_raster_overlay(data_arr, var_key):
         rgba = cmap(norm_data)
         vrange = (vmin, vmax)
         
-    rgba[..., 3] = np.where(valid_mask, 0.75, 0) # Opacité ajustée pour la visibilité des fonds
+    rgba[..., 3] = np.where(valid_mask, 0.75, 0)
     img = (np.clip(rgba, 0, 1) * 255).astype(np.uint8)
     return np.flipud(img), vrange
 
@@ -215,7 +212,6 @@ time_coords = pd.to_datetime(ds.time.values)
 n_steps = len(time_coords)
 time_labels = [t.strftime('%a %d/%m - %H:00 UTC') for t in time_coords]
 
-# Valeurs par défaut centrées sur le Rhône (Lat ~45.8, Lon ~4.6)
 if 'step_idx' not in st.session_state: st.session_state.step_idx = 0
 if 'lat_target' not in st.session_state: st.session_state.lat_target = 45.8
 if 'lon_target' not in st.session_state: st.session_state.lon_target = 4.6
@@ -263,11 +259,9 @@ img, vrange = create_raster_overlay(data_slice[var_key], var_key)
 
 if page_choisie == "🗺️ Cartographie":
     
-    # --- MÉTÉRIQUES EN HAUT (HEADS-UP) ---
     local_data = data_slice.sel({LAT: st.session_state.lat_target, LON: st.session_state.lon_target}, method="nearest")
     def get_val(var): return float(local_data[var].values) if var in local_data else 0.0
 
-    # Déterminer la couleur de la carte IFM selon le seuil
     ifm_val = get_val('ifm')
     ifm_color = "#22c55e" if ifm_val <= 5.2 else "#eab308" if ifm_val <= 11.2 else "#f97316" if ifm_val <= 21.3 else "#e11d48" if ifm_val <= 38 else "#7f1d1d"
 
@@ -287,30 +281,18 @@ if page_choisie == "🗺️ Cartographie":
         </div>
         """, unsafe_allow_html=True)
         
-    st.markdown("<br>", unsafe_allow_html=True) # Espacement
+    st.markdown("<br>", unsafe_allow_html=True) 
 
-    # --- CARTE FOLIUM (RÉSOLUTION AGRANDIE & COUCHES) ---
-    # Centrage sur le département du Rhône par défaut
     m = folium.Map(location=[45.8, 4.6], zoom_start=9, tiles=None)
-    
-    # Basemaps additionnels
     folium.TileLayer('CartoDB positron', name='Minimaliste (CartoDB)', control=True).add_to(m)
     folium.TileLayer('OpenStreetMap', name='Topographique (OSM)', control=True).add_to(m)
-    folium.TileLayer(
-        tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        attr='Esri', name='Satellite (Esri)', control=True
-    ).add_to(m)
+    folium.TileLayer(tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr='Esri', name='Satellite (Esri)', control=True).add_to(m)
     
-    # Calque de données
     if img is not None:
         lats, lons = ds[LAT].values, ds[LON].values
         bounds = [[float(lats.min()), float(lons.min())], [float(lats.max()), float(lons.max())]]
-        folium.raster_layers.ImageOverlay(
-            image=img, bounds=bounds, opacity=0.85, 
-            interactive=True, cross_origin=False, name=f'Modèle ({var_choice})'
-        ).add_to(m)
+        folium.raster_layers.ImageOverlay(image=img, bounds=bounds, opacity=0.85, interactive=True, cross_origin=False, name=f'Modèle ({var_choice})').add_to(m)
         
-    # Contour départements
     for feat in geojson.get('features', []):
         geom = feat.get('geometry', {})
         coords_list = [geom['coordinates']] if geom.get('type') == 'Polygon' else geom.get('coordinates', []) if geom.get('type') == 'MultiPolygon' else []
@@ -318,19 +300,11 @@ if page_choisie == "🗺️ Cartographie":
             for ring in poly:
                 folium.PolyLine(locations=list(zip([c[1] for c in ring], [c[0] for c in ring])), color='#1e293b', opacity=0.6, weight=1.5).add_to(m)
 
-    # Curseur de sélection
-    folium.Marker(
-        location=[st.session_state.lat_target, st.session_state.lon_target],
-        icon=folium.Icon(color="black", icon="crosshairs", prefix='fa')
-    ).add_to(m)
-    
-    # Ajout du contrôle des calques
+    folium.Marker(location=[st.session_state.lat_target, st.session_state.lon_target], icon=folium.Icon(color="black", icon="crosshairs", prefix='fa')).add_to(m)
     folium.LayerControl(position='topright').add_to(m)
     
-    # Rendu : carte plus haute (750px)
     map_data = st_folium(m, use_container_width=True, height=750, returned_objects=["last_clicked"])
     
-    # Légende Dynamique en bas
     if img is not None and vrange is not None:
         render_dynamic_legend(var_key, vrange[0], vrange[1], var_choice, units_cfg[var_key])
     
@@ -354,11 +328,8 @@ elif page_choisie == "📈 Météogramme & Data":
             "HR": ts['hr'].values if 'hr' in ts else [0] * n_steps,
         })
         
-        # --- NOUVEAU MÉTÉOGRAMME (1 colonne, 4 lignes, axe temporel partagé) ---
         fig = make_subplots(
-            rows=4, cols=1, 
-            shared_xaxes=True, 
-            vertical_spacing=0.04,
+            rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.04,
             subplot_titles=("IFM (Risque Incendie)", "Température (°C)", "Vitesse du Vent (km/h)", "Humidité Relative (%)")
         )
         
@@ -370,29 +341,32 @@ elif page_choisie == "📈 Météogramme & Data":
         fig.add_vline(x=time_labels[st.session_state.step_idx], line_color='rgba(15, 23, 42, 0.6)', line_width=2, line_dash="dash")
         
         fig.update_layout(
-            height=900, 
-            showlegend=False, 
-            plot_bgcolor='rgba(0,0,0,0)', 
-            paper_bgcolor='rgba(0,0,0,0)',
-            hovermode="x unified",
-            font=dict(family='Inter', size=11, color='#475569'),
-            margin=dict(l=10, r=10, t=40, b=10)
+            height=900, showlegend=False, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+            hovermode="x unified", font=dict(family='Inter', size=11, color='#475569'), margin=dict(l=10, r=10, t=40, b=10)
         )
         
-        # Quadrillage
         fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#f1f5f9', zeroline=False)
         fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#f1f5f9', zeroline=False)
         
         st.plotly_chart(fig, use_container_width=True)
         
-        # --- TABLEAU AMÉLIORÉ ---
+        # --- DATA & BOUTON CSV ---
         st.markdown("### Extraction Data (Séries Temporelles)")
-        # Mise en évidence des pics maximum par colonne (rouge pâle) et des minimums en HR (bleu pâle)
+        
         styled_df = df.style.highlight_max(axis=0, subset=['IFM', 'Temp', 'Vent'], color='#fecaca') \
                             .highlight_min(axis=0, subset=['HR'], color='#bfdbfe') \
                             .format({"IFM": "{:.1f}", "Temp": "{:.1f}", "Vent": "{:.1f}", "HR": "{:.1f}"})
                             
         st.dataframe(styled_df, use_container_width=True, height=400)
+        
+        # Bouton d'export
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Télécharger l'extraction en CSV",
+            data=csv,
+            file_name=f"pyrocast_data_lat{st.session_state.lat_target:.3f}_lon{st.session_state.lon_target:.3f}.csv",
+            mime="text/csv"
+        )
             
     except Exception as e:
         st.error(f"Erreur d'analyse météogramme : {e}")
