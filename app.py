@@ -9,6 +9,7 @@ import json, os, tempfile
 from datetime import datetime, UTC
 import folium
 from streamlit_folium import st_folium
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
@@ -50,65 +51,90 @@ html,body,[class*="css"]{font-family:'Source Sans 3',sans-serif!important;backgr
 # ═════════════════════════════════════════════════════════════
 
 def open_nc(path):
-    for engine in ["netcdf4","h5netcdf","scipy"]:
+    for engine in ["netcdf4", "h5netcdf", "scipy"]:
         try:
-            return xr.open_dataset(path,engine=engine)
-        except:
+            return xr.open_dataset(path, engine=engine)
+        except Exception:
             continue
     raise RuntimeError("Aucun engine xarray disponible")
 
-@st.cache_data(ttl=3600,show_spinner=False)
+@st.cache_data(ttl=3600, show_spinner=False)
 def load_netcdf():
-    REPO,BRANCH,NCFILE="Matthieu-Lacroix/AROME1.3km_IFM_Horaire","main","arome_fwi_complet.nc"
-    token=None
-    try:token=st.secrets["GITHUB_TOKEN"]
-    except:pass
-    if not token:token=os.environ.get("GITHUB_TOKEN")
-    auth={"Authorization":f"token {token}"} if token else {}
-    def stream(url,h):
-        tmp=tempfile.NamedTemporaryFile(suffix=".nc",delete=False)
-        r=requests.get(url,headers=h,stream=True,timeout=300)
-        r.raise_for_status()
-        for c in r.iter_content(512*1024):tmp.write(c)
-        tmp.flush();tmp.close()
-        return tmp.name
-    for lp in [f"/mount/src/{REPO.split('/')[-1].lower()}/{NCFILE}",os.path.join(os.path.dirname(os.path.abspath(__file__)),NCFILE)]:
-        if os.path.exists(lp) and os.path.getsize(lp)>1000:
-            try:return open_nc(lp)
-            except:pass
-    mu=f"https://api.github.com/repos/{REPO}/contents/{NCFILE}?ref={BRANCH}"
-    mr=requests.get(mu,headers={**auth,"Accept":"application/vnd.github.v3+json"},timeout=20)
-    mr.raise_for_status()
-    m=mr.json()
-    dl,sz=m.get("download_url"),m.get("size",0)
-    if not dl or sz<500:
-        lu=f"https://media.githubusercontent.com/media/{REPO}/{BRANCH}/{NCFILE}"
-        tp=stream(lu,{**auth,"Accept":"application/octet-stream"})
-        ds=open_nc(tp);os.unlink(tp);return ds
-    tp=stream(dl,{**auth,"Accept":"application/octet-stream"})
-    ds=open_nc(tp);os.unlink(tp);return ds
+    REPO, BRANCH, NCFILE = "Matthieu-Lacroix/AROME1.3km_IFM_Horaire", "main", "arome_fwi_complet.nc"
+    token = None
+    try:
+        token = st.secrets["GITHUB_TOKEN"]
+    except Exception:
+        pass
+    if not token:
+        token = os.environ.get("GITHUB_TOKEN")
+    auth = {"Authorization": f"token {token}"} if token else {}
 
-@st.cache_data(ttl=3600,show_spinner=False)
+    def stream(url, h):
+        tmp = tempfile.NamedTemporaryFile(suffix=".nc", delete=False)
+        r = requests.get(url, headers=h, stream=True, timeout=300)
+        r.raise_for_status()
+        for c in r.iter_content(512 * 1024):
+            tmp.write(c)
+        tmp.flush()
+        tmp.close()
+        return tmp.name
+
+    for lp in [
+        f"/mount/src/{REPO.split('/')[-1].lower()}/{NCFILE}",
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), NCFILE)
+    ]:
+        if os.path.exists(lp) and os.path.getsize(lp) > 1000:
+            try:
+                return open_nc(lp)
+            except Exception:
+                pass
+
+    mu = f"https://api.github.com/repos/{REPO}/contents/{NCFILE}?ref={BRANCH}"
+    mr = requests.get(mu, headers={**auth, "Accept": "application/vnd.github.v3+json"}, timeout=20)
+    mr.raise_for_status()
+    m = mr.json()
+    dl, sz = m.get("download_url"), m.get("size", 0)
+    if not dl or sz < 500:
+        lu = f"https://media.githubusercontent.com/media/{REPO}/{BRANCH}/{NCFILE}"
+        tp = stream(lu, {**auth, "Accept": "application/octet-stream"})
+        ds = open_nc(tp)
+        os.unlink(tp)
+        return ds
+    tp = stream(dl, {**auth, "Accept": "application/octet-stream"})
+    ds = open_nc(tp)
+    os.unlink(tp)
+    return ds
+
+@st.cache_data(ttl=3600, show_spinner=False)
 def load_geojson():
-    REPO,BRANCH,GEO="Matthieu-Lacroix/AROME1.3km_IFM_Horaire","main","dep.geojson"
-    token=None
-    try:token=st.secrets["GITHUB_TOKEN"]
-    except:pass
-    if not token:token=os.environ.get("GITHUB_TOKEN")
-    auth={"Authorization":f"token {token}"} if token else {}
-    for lp in [f"/mount/src/{REPO.split('/')[-1].lower()}/{GEO}",os.path.join(os.path.dirname(os.path.abspath(__file__)),GEO)]:
+    REPO, BRANCH, GEO = "Matthieu-Lacroix/AROME1.3km_IFM_Horaire", "main", "dep.geojson"
+    token = None
+    try:
+        token = st.secrets["GITHUB_TOKEN"]
+    except Exception:
+        pass
+    if not token:
+        token = os.environ.get("GITHUB_TOKEN")
+    auth = {"Authorization": f"token {token}"} if token else {}
+    for lp in [
+        f"/mount/src/{REPO.split('/')[-1].lower()}/{GEO}",
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), GEO)
+    ]:
         if os.path.exists(lp):
             try:
-                with open(lp,'r') as f:return json.load(f)
-            except:pass
-    ru=f"https://raw.githubusercontent.com/{REPO}/{BRANCH}/{GEO}"
-    r=requests.get(ru,headers=auth,timeout=30)
+                with open(lp, 'r') as f:
+                    return json.load(f)
+            except Exception:
+                pass
+    ru = f"https://raw.githubusercontent.com/{REPO}/{BRANCH}/{GEO}"
+    r = requests.get(ru, headers=auth, timeout=30)
     r.raise_for_status()
     return r.json()
 
 # Écran de chargement
 if 'ds' not in st.session_state:
-    ld=st.empty()
+    ld = st.empty()
     with ld.container():
         st.markdown("""
         <div class="fire-container">
@@ -116,24 +142,46 @@ if 'ds' not in st.session_state:
             <div class="flame"></div><div class="flame"></div>
         </div>
         <div class="loading-text">🔥 Chargement des données météo... 🔥</div>
-        """,unsafe_allow_html=True)
-    st.session_state.ds=load_netcdf()
-    st.session_state.geojson=load_geojson()
+        """, unsafe_allow_html=True)
+    st.session_state.ds = load_netcdf()
+    st.session_state.geojson = load_geojson()
     ld.empty()
 
-ds=st.session_state.ds
-geojson=st.session_state.geojson
+ds = st.session_state.ds
+geojson = st.session_state.geojson
+
+# ═════════════════════════════════════════════════════════════
+#  DÉTECTION AUTOMATIQUE DES NOMS DE COORDONNÉES
+# ═════════════════════════════════════════════════════════════
+
+def _find_coord(ds, candidates):
+    """Trouve le nom réel d'une coordonnée parmi plusieurs candidats possibles."""
+    for c in candidates:
+        if c in ds.coords or c in ds.dims:
+            return c
+    available = list(ds.coords) + list(ds.dims)
+    raise KeyError(
+        f"Aucune coordonnée trouvée parmi {candidates}. "
+        f"Coordonnées disponibles dans le fichier : {available}"
+    )
+
+LAT = _find_coord(ds, ["latitude", "lat", "LAT", "y", "Y"])
+LON = _find_coord(ds, ["longitude", "lon", "LON", "long", "LONG", "x", "X"])
 
 # ═════════════════════════════════════════════════════════════
 #  SESSION STATE
 # ═════════════════════════════════════════════════════════════
-if 'step_idx' not in st.session_state:st.session_state.step_idx=0
-if 'lat_target' not in st.session_state:st.session_state.lat_target=45.0
-if 'lon_target' not in st.session_state:st.session_state.lon_target=5.0
-if 'variable' not in st.session_state:st.session_state.variable='ifm'
+if 'step_idx' not in st.session_state:
+    st.session_state.step_idx = 0
+if 'lat_target' not in st.session_state:
+    st.session_state.lat_target = 45.0
+if 'lon_target' not in st.session_state:
+    st.session_state.lon_target = 5.0
+if 'variable' not in st.session_state:
+    st.session_state.variable = 'ifm'
 
-time_coords=pd.to_datetime(ds.time.values)
-n_steps=len(time_coords)
+time_coords = pd.to_datetime(ds.time.values)
+n_steps = len(time_coords)
 
 # ═════════════════════════════════════════════════════════════
 #  SIDEBAR
@@ -141,153 +189,193 @@ n_steps=len(time_coords)
 with st.sidebar:
     st.markdown("### 🔥 IFM · AROME 1.3km")
     st.caption("Prévision numérique haute résolution")
-    st.markdown('<div style="height:1px;background:#ddd;margin:12px 0"></div>',unsafe_allow_html=True)
+    st.markdown('<div style="height:1px;background:#ddd;margin:12px 0"></div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="section-title">Variable</div>',unsafe_allow_html=True)
-    var_choice=st.selectbox("var",["IFM","Température","Vent","Humidité"],label_visibility="collapsed")
-    var_map={"IFM":"ifm","Température":"temp","Vent":"wind","Humidité":"hr"}
-    st.session_state.variable=var_map[var_choice]
+    st.markdown('<div class="section-title">Variable</div>', unsafe_allow_html=True)
+    var_choice = st.selectbox("var", ["IFM", "Température", "Vent", "Humidité"], label_visibility="collapsed")
+    var_map = {"IFM": "ifm", "Température": "temp", "Vent": "wind", "Humidité": "hr"}
+    st.session_state.variable = var_map[var_choice]
 
-    st.markdown('<div class="section-title">Échéance</div>',unsafe_allow_html=True)
-    new_idx=st.slider("Échéance",0,n_steps-1,st.session_state.step_idx,label_visibility="collapsed")
-    if new_idx!=st.session_state.step_idx:
-        st.session_state.step_idx=new_idx
+    st.markdown('<div class="section-title">Échéance</div>', unsafe_allow_html=True)
+    new_idx = st.slider("Échéance", 0, n_steps - 1, st.session_state.step_idx, label_visibility="collapsed")
+    if new_idx != st.session_state.step_idx:
+        st.session_state.step_idx = new_idx
 
-    sel_time=time_coords[st.session_state.step_idx]
+    sel_time = time_coords[st.session_state.step_idx]
     st.markdown(f"**{sel_time.strftime('%a %d/%m · %H:00 UTC')}**")
     st.caption(f"+{st.session_state.step_idx}h depuis le run")
 
-    cols=st.columns(5)
-    if cols[0].button("⏮",width="stretch",key="first"):st.session_state.step_idx=0;st.rerun()
-    if cols[1].button("◀",width="stretch",key="prev"):st.session_state.step_idx=max(0,st.session_state.step_idx-1);st.rerun()
-    if cols[2].button("▶",width="stretch",key="play"):pass
-    if cols[3].button("▶",width="stretch",key="next"):st.session_state.step_idx=min(n_steps-1,st.session_state.step_idx+1);st.rerun()
-    if cols[4].button("⏭",width="stretch",key="last"):st.session_state.step_idx=n_steps-1;st.rerun()
+    cols = st.columns(5)
+    if cols[0].button("⏮", use_container_width=True, key="first"):
+        st.session_state.step_idx = 0
+        st.rerun()
+    if cols[1].button("◀", use_container_width=True, key="prev"):
+        st.session_state.step_idx = max(0, st.session_state.step_idx - 1)
+        st.rerun()
+    cols[2].button("▶", use_container_width=True, key="play")  # placeholder
+    if cols[3].button("▶", use_container_width=True, key="next"):
+        st.session_state.step_idx = min(n_steps - 1, st.session_state.step_idx + 1)
+        st.rerun()
+    if cols[4].button("⏭", use_container_width=True, key="last"):
+        st.session_state.step_idx = n_steps - 1
+        st.rerun()
 
 # ═════════════════════════════════════════════════════════════
 #  CARTE LEAFLET INTERACTIVE
 # ═════════════════════════════════════════════════════════════
 
-def create_raster_overlay(data_arr,cmap_name='RdYlGn_r'):
-    """Convertit array xarray en image RGBA pour overlay Folium."""
-    data=data_arr.values.astype(np.float32)
-    data=np.where(np.isfinite(data),data,np.nan)
-    valid_mask=~np.isnan(data)
-    if not np.any(valid_mask):return None,None
-    vmin,vmax=np.nanpercentile(data,[2,98])
-    if not np.isfinite(vmin) or not np.isfinite(vmax) or vmin>=vmax:vmin,vmax=0,1
-    norm_data=(data-vmin)/(vmax-vmin)
-    norm_data=np.clip(norm_data,0,1)
-    norm_data=np.nan_to_num(norm_data,nan=0.0)
-    cmap=cm.get_cmap(cmap_name)
-    rgba=cmap(norm_data)
-    rgba[...,3]=np.where(valid_mask,0.7,0)
-    img=(np.clip(rgba,0,1)*255).astype(np.uint8)
-    return np.flipud(img),(vmin,vmax)
+def create_raster_overlay(data_arr, cmap_name='RdYlGn_r'):
+    """Convertit un DataArray xarray en image RGBA pour overlay Folium."""
+    data = data_arr.values.astype(np.float32)
+    data = np.where(np.isfinite(data), data, np.nan)
+    valid_mask = ~np.isnan(data)
+    if not np.any(valid_mask):
+        return None, None
+    vmin, vmax = np.nanpercentile(data, [2, 98])
+    if not np.isfinite(vmin) or not np.isfinite(vmax) or vmin >= vmax:
+        vmin, vmax = 0, 1
+    norm_data = np.clip((data - vmin) / (vmax - vmin), 0, 1)
+    norm_data = np.nan_to_num(norm_data, nan=0.0)
+    try:
+        cmap = matplotlib.colormaps.get_cmap(cmap_name)   # matplotlib >= 3.7
+    except AttributeError:
+        cmap = cm.get_cmap(cmap_name)                     # matplotlib < 3.7
+    rgba = cmap(norm_data)
+    rgba[..., 3] = np.where(valid_mask, 0.7, 0)
+    img = (np.clip(rgba, 0, 1) * 255).astype(np.uint8)
+    return np.flipud(img), (vmin, vmax)
 
-data_slice=ds.isel(time=st.session_state.step_idx)
-var_key=st.session_state.variable
+data_slice = ds.isel(time=st.session_state.step_idx)
+var_key = st.session_state.variable
 
-cmap_cfg={"ifm":"RdYlGn_r","temp":"RdYlBu_r","wind":"Blues","hr":"GnBu"}
-cmap=cmap_cfg.get(var_key,"RdYlGn_r")
+cmap_cfg = {"ifm": "RdYlGn_r", "temp": "RdYlBu_r", "wind": "Blues", "hr": "GnBu"}
+cmap_name = cmap_cfg.get(var_key, "RdYlGn_r")
 
-img,vrange=create_raster_overlay(data_slice[var_key],cmap)
-
-lats=ds.latitude.values
-lons=ds.longitude.values
-center_lat,center_lon=(lats.min()+lats.max())/2,(lons.min()+lons.max())/2
-
-m=folium.Map(location=[center_lat,center_lon],zoom_start=8,tiles="OpenStreetMap")
-
-if img is not None:
-    bounds=[[float(lats.min()),float(lons.min())],[float(lats.max()),float(lons.max())]]
-    folium.raster_layers.ImageOverlay(image=img,bounds=bounds,opacity=1.0,interactive=True,cross_origin=False,zindex=1).add_to(m)
-
-# Départements GeoJSON
-for feat in geojson.get('features',[]):
-    geom=feat.get('geometry',{})
-    if geom.get('type')=='Polygon':coords_list=[geom['coordinates']]
-    elif geom.get('type')=='MultiPolygon':coords_list=geom['coordinates']
-    else:continue
-    for poly in coords_list:
-        for ring in poly:
-            lons_d=[c[0] for c in ring]
-            lats_d=[c[1] for c in ring]
-            folium.PolyLine(locations=list(zip(lats_d,lons_d)),color='rgba(0,0,0,0.6)',weight=1.5).add_to(m)
-
-# Marqueur cible
-folium.Marker(location=[st.session_state.lat_target,st.session_state.lon_target],popup="Point actif",icon=folium.Icon(color="red",icon="crosshairs",prefix='fa')).add_to(m)
-
-map_data=st_folium(m,width="100%",height=650,returned_objects=["last_clicked"])
-
-# Gestion clic
-if map_data and map_data.get("last_clicked"):
-    clicked=map_data["last_clicked"]
-    st.session_state.lat_target=clicked["lat"]
-    st.session_state.lon_target=clicked["lng"]
-    st.rerun()
+img, vrange = create_raster_overlay(data_slice[var_key], cmap_name)
 
 # ═════════════════════════════════════════════════════════════
-#  MÉTRIQUES POINT ACTIF
+#  ONGLETS PRINCIPAUX
 # ═════════════════════════════════════════════════════════════
 
-def safe_mean(var):
-    return float(data_slice[var].mean()) if var in data_slice else 0
+tab_carte, tab_graphs = st.tabs(["🗺️ Carte", "📈 Graphiques"])
 
-st.markdown('<div class="section-title">📍 Métriques Point Actif</div>',unsafe_allow_html=True)
-st.caption(f"Coordonnées : {st.session_state.lat_target:.4f}°N, {st.session_state.lon_target:.4f}°E")
+# ──────────────────────────────────────────────────────────────
+#  ONGLET CARTE
+# ──────────────────────────────────────────────────────────────
+with tab_carte:
 
-cols=st.columns(4)
-metrics=[
-    ("🔥 IFM",safe_mean('ifm'),""),
-    ("🌡️ Temp",safe_mean('temp'),"°C"),
-    ("💨 Vent",safe_mean('wind'),"km/h"),
-    ("💧 HR",safe_mean('hr'),"%")
-]
-for col,(lbl,val,unit) in zip(cols,metrics):
-    col.markdown(f"""
-    <div class="metric-card">
-        <div class="metric-label">{lbl}</div>
-        <div class="metric-val">{val:.1f}<span style="font-size:0.9rem;color:#999">{unit}</span></div>
-    </div>
-    """,unsafe_allow_html=True)
+    lats = ds[LAT].values
+    lons = ds[LON].values
+    center_lat = (float(lats.min()) + float(lats.max())) / 2
+    center_lon = (float(lons.min()) + float(lons.max())) / 2
 
-# ═════════════════════════════════════════════════════════════
-#  GRAPHIQUES TEMPORELS
-# ═════════════════════════════════════════════════════════════
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=8, tiles="OpenStreetMap")
 
-st.markdown('<div class="section-title">📈 Séries Temporelles</div>',unsafe_allow_html=True)
+    if img is not None:
+        bounds = [
+            [float(lats.min()), float(lons.min())],
+            [float(lats.max()), float(lons.max())]
+        ]
+        folium.raster_layers.ImageOverlay(
+            image=img, bounds=bounds, opacity=1.0,
+            interactive=True, cross_origin=False, zindex=1
+        ).add_to(m)
 
-try:
-    ts=ds.sel(latitude=st.session_state.lat_target,longitude=st.session_state.lon_target,method="nearest")
-    df=pd.DataFrame({
-        "H+":range(n_steps),
-        "IFM":ts['ifm'].values if 'ifm' in ts else [0]*n_steps,
-        "Temp":ts['temp'].values if 'temp' in ts else [0]*n_steps,
-        "Vent":ts['wind'].values if 'wind' in ts else [0]*n_steps,
-        "HR":ts['hr'].values if 'hr' in ts else [0]*n_steps,
-    })
+    # Départements GeoJSON
+    for feat in geojson.get('features', []):
+        geom = feat.get('geometry', {})
+        if geom.get('type') == 'Polygon':
+            coords_list = [geom['coordinates']]
+        elif geom.get('type') == 'MultiPolygon':
+            coords_list = geom['coordinates']
+        else:
+            continue
+        for poly in coords_list:
+            for ring in poly:
+                lons_d = [c[0] for c in ring]
+                lats_d = [c[1] for c in ring]
+                folium.PolyLine(
+                    locations=list(zip(lats_d, lons_d)),
+                    color='rgba(0,0,0,0.6)', weight=1.5
+                ).add_to(m)
 
-    fig=make_subplots(rows=2,cols=2,subplot_titles=("IFM","Température","Vent","Humidité"),vertical_spacing=0.12)
+    # Marqueur cible
+    folium.Marker(
+        location=[st.session_state.lat_target, st.session_state.lon_target],
+        popup="Point actif",
+        icon=folium.Icon(color="red", icon="crosshairs", prefix='fa')
+    ).add_to(m)
 
-    fig.add_trace(go.Scatter(x=df['H+'],y=df['IFM'],fill='tozeroy',fillcolor='rgba(192,57,43,0.1)',line=dict(color='#c0392b',width=2),name='IFM'),row=1,col=1)
-    fig.add_trace(go.Scatter(x=df['H+'],y=df['Temp'],line=dict(color='#e65100',width=2),name='Temp'),row=1,col=2)
-    fig.add_trace(go.Scatter(x=df['H+'],y=df['Vent'],line=dict(color='#1565c0',width=2),name='Vent'),row=2,col=1)
-    fig.add_trace(go.Scatter(x=df['H+'],y=df['HR'],line=dict(color='#43a047',width=2),name='HR'),row=2,col=2)
+    map_data = st_folium(m, width="100%", height=650, returned_objects=["last_clicked"])
 
-    fig.add_vline(x=st.session_state.step_idx,line_color='rgba(0,0,0,0.3)',line_width=1)
+    # Gestion clic
+    if map_data and map_data.get("last_clicked"):
+        clicked = map_data["last_clicked"]
+        st.session_state.lat_target = clicked["lat"]
+        st.session_state.lon_target = clicked["lng"]
+        st.rerun()
 
-    fig.update_layout(height=600,showlegend=False,template="plotly_white",font=dict(family='Source Sans 3',size=11))
-    fig.update_xaxes(showgrid=True,gridcolor='#ebebeb')
-    fig.update_yaxes(showgrid=True,gridcolor='#ebebeb')
+    # Métriques sous la carte
+    def safe_mean(var):
+        return float(data_slice[var].mean()) if var in data_slice else 0.0
 
-    st.plotly_chart(fig,width="stretch")
+    st.markdown('<div class="section-title">📍 Métriques Point Actif</div>', unsafe_allow_html=True)
+    st.caption(f"Coordonnées : {st.session_state.lat_target:.4f}°N, {st.session_state.lon_target:.4f}°E")
 
-    # Tableau
-    st.markdown('<div class="section-title">Tableau des échéances</div>',unsafe_allow_html=True)
-    df_disp=df.copy().round(1)
-    df_disp.index=df_disp.index.astype(str)
-    st.dataframe(df_disp,width="stretch",height=250)
+    cols = st.columns(4)
+    metrics = [
+        ("🔥 IFM",  safe_mean('ifm'),  ""),
+        ("🌡️ Temp", safe_mean('temp'), "°C"),
+        ("💨 Vent",  safe_mean('wind'), "km/h"),
+        ("💧 HR",   safe_mean('hr'),   "%"),
+    ]
+    for col, (lbl, val, unit) in zip(cols, metrics):
+        col.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">{lbl}</div>
+            <div class="metric-val">{val:.1f}<span style="font-size:0.9rem;color:#999">{unit}</span></div>
+        </div>
+        """, unsafe_allow_html=True)
 
-except Exception as e:
-    st.error(f"Erreur graphiques : {e}")
+# ──────────────────────────────────────────────────────────────
+#  ONGLET GRAPHIQUES
+# ──────────────────────────────────────────────────────────────
+with tab_graphs:
+    try:
+        ts = ds.sel({LAT: st.session_state.lat_target, LON: st.session_state.lon_target}, method="nearest")
+
+        df = pd.DataFrame({
+            "H+":  range(n_steps),
+            "IFM": ts['ifm'].values  if 'ifm'  in ts else [0] * n_steps,
+            "Temp":ts['temp'].values if 'temp' in ts else [0] * n_steps,
+            "Vent":ts['wind'].values if 'wind' in ts else [0] * n_steps,
+            "HR":  ts['hr'].values   if 'hr'   in ts else [0] * n_steps,
+        })
+
+        fig = make_subplots(
+            rows=2, cols=2,
+            subplot_titles=("IFM", "Température", "Vent", "Humidité"),
+            vertical_spacing=0.12
+        )
+        fig.add_trace(go.Scatter(x=df['H+'], y=df['IFM'], fill='tozeroy',
+            fillcolor='rgba(192,57,43,0.1)', line=dict(color='#c0392b', width=2), name='IFM'),  row=1, col=1)
+        fig.add_trace(go.Scatter(x=df['H+'], y=df['Temp'], line=dict(color='#e65100', width=2), name='Temp'), row=1, col=2)
+        fig.add_trace(go.Scatter(x=df['H+'], y=df['Vent'], line=dict(color='#1565c0', width=2), name='Vent'), row=2, col=1)
+        fig.add_trace(go.Scatter(x=df['H+'], y=df['HR'],   line=dict(color='#43a047', width=2), name='HR'),   row=2, col=2)
+
+        fig.add_vline(x=st.session_state.step_idx, line_color='rgba(0,0,0,0.3)', line_width=1)
+        fig.update_layout(
+            height=600, showlegend=False, template="plotly_white",
+            font=dict(family='Source Sans 3', size=11)
+        )
+        fig.update_xaxes(showgrid=True, gridcolor='#ebebeb')
+        fig.update_yaxes(showgrid=True, gridcolor='#ebebeb')
+
+        st.plotly_chart(fig, width='stretch')
+
+        st.markdown('<div class="section-title">Tableau des échéances</div>', unsafe_allow_html=True)
+        df_disp = df.copy().round(1)
+        st.dataframe(df_disp, width='stretch', height=250)
+
+    except Exception as e:
+        st.error(f"Erreur graphiques : {e}")
