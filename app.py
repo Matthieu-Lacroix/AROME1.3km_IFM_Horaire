@@ -26,6 +26,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# On a retiré le masquage du header/toolbar pour ne plus casser le bouton de la barre latérale !
 css_code = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
@@ -41,11 +42,6 @@ css_code = """
 
 /* Base de l'application */
 .stApp { background: var(--bg-app) !important; font-family: 'Inter', sans-serif !important; }
-
-/* Masquer le superflu MAIS garder le header pour le bouton de la sidebar */
-#MainMenu { visibility: hidden; }
-[data-testid="stToolbar"] { visibility: hidden; }
-header { background: transparent !important; }
 
 /* Sidebar Premium */
 [data-testid="stSidebar"] { 
@@ -88,7 +84,7 @@ header { background: transparent !important; }
 st.markdown(css_code, unsafe_allow_html=True)
 
 # ═════════════════════════════════════════════════════════════
-#  CHARGEMENT DES DONNÉES (inchangé)
+#  CHARGEMENT DES DONNÉES
 # ═════════════════════════════════════════════════════════════
 def open_nc(path):
     for engine in ["netcdf4", "h5netcdf", "scipy"]:
@@ -178,7 +174,6 @@ def create_raster_overlay(data_arr, cmap_name='RdYlGn_r'):
     return np.flipud(img), (vmin, vmax)
 
 def render_dynamic_legend(cmap_name, vmin, vmax, var_name, unit):
-    # Dictionnaire des gradients CSS correspondants aux colormaps matplotlib
     css_gradients = {
         "RdYlGn_r": "linear-gradient(to right, #1a9850, #91cf60, #d9ef8b, #fee08b, #fc8d59, #d73027)",
         "RdYlBu_r": "linear-gradient(to right, #313695, #74add1, #e0f3f8, #fee090, #f46d43, #a50026)",
@@ -235,7 +230,6 @@ with st.sidebar:
 
     st.caption(f"Projection: H+{st.session_state.step_idx} depuis initialisation")
     
-    # Boutons avec st.columns
     cols = st.columns(5)
     if cols[0].button("⏮", use_container_width=True): st.session_state.step_idx = 0; st.session_state.is_playing = False; st.rerun()
     if cols[1].button("◀", use_container_width=True): st.session_state.step_idx = max(0, st.session_state.step_idx - 1); st.session_state.is_playing = False; st.rerun()
@@ -247,14 +241,12 @@ with st.sidebar:
     if cols[3].button("▶", use_container_width=True): st.session_state.step_idx = min(n_steps - 1, st.session_state.step_idx + 1); st.session_state.is_playing = False; st.rerun()
     if cols[4].button("⏭", use_container_width=True): st.session_state.step_idx = n_steps - 1; st.session_state.is_playing = False; st.rerun()
 
-# Préparation couche Raster
 data_slice = ds.isel(time=st.session_state.step_idx)
 var_key = st.session_state.variable
 cmap_cfg = {"ifm": "RdYlGn_r", "temp": "RdYlBu_r", "wind": "Blues", "hr": "GnBu"}
 units_cfg = {"ifm": "Index", "temp": "°C", "wind": "km/h", "hr": "%"}
 current_cmap = cmap_cfg.get(var_key, "RdYlGn_r")
 img, vrange = create_raster_overlay(data_slice[var_key], current_cmap)
-
 
 # ═════════════════════════════════════════════════════════════
 #  AFFICHAGE PRINCIPAL
@@ -267,7 +259,6 @@ if page_choisie == "🗺️ Cartographie Spatiale":
     lats, lons = ds[LAT].values, ds[LON].values
     center_lat, center_lon = (float(lats.min()) + float(lats.max())) / 2, (float(lons.min()) + float(lons.max())) / 2
     
-    # 🌟 CartoDB Positron : Fond clair, minimaliste, très "Pro" 
     m = folium.Map(location=[center_lat, center_lon], zoom_start=8, tiles="CartoDB positron")
     
     if img is not None:
@@ -286,7 +277,6 @@ if page_choisie == "🗺️ Cartographie Spatiale":
         icon=folium.Icon(color="black", icon="crosshairs", prefix='fa')
     ).add_to(m)
     
-    # Affichage carte + Légende
     map_data = st_folium(m, use_container_width=True, height=550, returned_objects=["last_clicked"])
     
     if img is not None and vrange is not None:
@@ -298,14 +288,12 @@ if page_choisie == "🗺️ Cartographie Spatiale":
         st.session_state.is_playing = False
         st.rerun()
 
-    # Métriques "Entreprise"
     st.markdown('<div class="section-title" style="margin-top:2rem;">📍 Télémétrie du point sélectionné</div>', unsafe_allow_html=True)
     
     local_data = data_slice.sel({LAT: st.session_state.lat_target, LON: st.session_state.lon_target}, method="nearest")
     def get_val(var): return float(local_data[var].values) if var in local_data else 0.0
 
     cols = st.columns(4)
-    # On assigne la couleur rouge (--accent) seulement à l'IFM pour le faire ressortir
     metrics = [
         ("🔥 IFM",  get_val('ifm'), "", "var(--accent)"),
         ("🌡️ Température", get_val('temp'), "°C", "#3b82f6"),
@@ -320,7 +308,6 @@ if page_choisie == "🗺️ Cartographie Spatiale":
             <div class="metric-val">{val:.1f}<span class="metric-unit">{unit}</span></div>
         </div>
         """, unsafe_allow_html=True)
-
 
 elif page_choisie == "📈 Intelligence Temporelle":
     
@@ -337,30 +324,25 @@ elif page_choisie == "📈 Intelligence Temporelle":
             "HR": ts['hr'].values if 'hr' in ts else [0] * n_steps,
         })
         
-        # Création d'un graphique super propre type "Plotly White / Enterprise"
         fig = make_subplots(rows=2, cols=2, subplot_titles=("IFM (Risque Incendie)", "Température (°C)", "Vitesse du Vent (km/h)", "Humidité Relative (%)"), vertical_spacing=0.15)
         
-        # Courbes lissées (spline) avec zone ombrée pour l'IFM
         fig.add_trace(go.Scatter(x=df['Date'], y=df['IFM'], mode='lines', line=dict(color='#ef4444', width=3, shape='spline'), fill='tozeroy', fillcolor='rgba(239, 68, 68, 0.1)', name='IFM'), row=1, col=1)
         fig.add_trace(go.Scatter(x=df['Date'], y=df['Temp'], mode='lines', line=dict(color='#f59e0b', width=3, shape='spline'), name='Temp'), row=1, col=2)
         fig.add_trace(go.Scatter(x=df['Date'], y=df['Vent'], mode='lines', line=dict(color='#3b82f6', width=3, shape='spline'), name='Vent'), row=2, col=1)
         fig.add_trace(go.Scatter(x=df['Date'], y=df['HR'], mode='lines', line=dict(color='#10b981', width=3, shape='spline'), name='HR'), row=2, col=2)
         
-        # Ligne verticale indiquant le pas de temps actuel
         fig.add_vline(x=time_labels[st.session_state.step_idx], line_color='rgba(15, 23, 42, 0.5)', line_width=2, line_dash="dash")
         
-        # Design général du layout
         fig.update_layout(
             height=650, 
             showlegend=False, 
             plot_bgcolor='rgba(0,0,0,0)', 
             paper_bgcolor='rgba(0,0,0,0)',
-            hovermode="x unified", # Le curseur lit toutes les stats d'un coup !
+            hovermode="x unified",
             font=dict(family='Inter', size=12, color='#64748b'),
             margin=dict(l=20, r=20, t=40, b=20)
         )
         
-        # Grilles discrètes
         fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#f1f5f9', zeroline=False)
         fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#f1f5f9', zeroline=False)
         
