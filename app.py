@@ -29,10 +29,19 @@ st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
 :root {--bg:#f4f5f7; --white:#fff; --border:#dde1e7; --text:#1c2333; --muted:#6b7280; --accent:#c0392b;}
-html, body, [class*="css"] {font-family:'Source Sans 3',sans-serif!important; background:var(--bg)!important;}
-#MainMenu, footer, header, [data-testid="stToolbar"], [data-testid="stDecoration"] {display:none!important}
+
+/* Cibler correctement l'application Streamlit sans casser les widgets */
+.stApp { background: var(--bg) !important; font-family: 'Source Sans 3', sans-serif !important; }
+[data-testid="stSidebar"] { 
+    background: linear-gradient(180deg, #fff 0%, #f8f9fa 100%) !important; 
+    border-right: 1px solid var(--border) !important; 
+}
+
+/* Cacher les éléments inutiles */
+header, [data-testid="stToolbar"], [data-testid="stDecoration"] { display: none !important; }
+
+/* Reste de ton CSS pour le feu et les métriques */
 .block-container {padding:1rem!important;}
-[data-testid="stSidebar"] {background:linear-gradient(180deg,#fff 0%,#f8f9fa 100%)!important; border-right:1px solid var(--border)!important; box-shadow:4px 0 10px rgba(0,0,0,0.05)!important}
 .fire-container {display:flex; justify-content:center; align-items:center; height:200px; gap:5px}
 .flame {width:20px; height:40px; background:linear-gradient(to top,#ff4500,#ffa500,#ffff00); border-radius:50% 50% 50% 50%/60% 60% 40% 40%; animation:flicker 0.3s infinite alternate; box-shadow:0 0 20px #ff4500}
 .flame:nth-child(2) {animation-delay:0.1s} .flame:nth-child(3) {animation-delay:0.2s}
@@ -312,3 +321,4 @@ with tab_graphs:
         
     except Exception as e:
         st.error(f"Erreur lors de la création des graphiques : {e}")
+
