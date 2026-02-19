@@ -331,9 +331,9 @@ with tab_carte:
     ]
     for col, (lbl, val, unit) in zip(cols, metrics):
         col.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">{lbl}</div>
-            <div class="metric-val">{val:.1f}<span style="font-size:0.9rem;color:#999">{unit}</span></div>
+        <div style="background:#fff;border:1px solid #dde1e7;border-radius:8px;padding:16px;margin:8px 0;border-left:4px solid #c0392b">
+            <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:4px">{lbl}</div>
+            <div style="font-size:1.6rem;font-weight:700;color:#1c2333">{val:.1f}<span style="font-size:0.9rem;color:#999">{unit}</span></div>
         </div>
         """, unsafe_allow_html=True)
 
