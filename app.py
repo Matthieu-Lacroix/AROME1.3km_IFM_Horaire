@@ -2,6 +2,7 @@ import os
 import json
 import tempfile
 import requests
+import time
 from datetime import datetime, UTC
 
 import numpy as np
@@ -25,8 +26,8 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-st.markdown("""
-<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+# Séparation stricte du CSS pour forcer l'interprétation HTML
+css_code = """
 <style>
 :root {--bg:#f4f5f7; --white:#fff; --border:#dde1e7; --text:#1c2333; --muted:#6b7280; --accent:#c0392b;}
 
@@ -40,7 +41,7 @@ st.markdown("""
 /* Cacher les éléments inutiles */
 header, [data-testid="stToolbar"], [data-testid="stDecoration"] { display: none !important; }
 
-/* Reste de ton CSS pour le feu et les métriques */
+/* Styles spécifiques */
 .block-container {padding:1rem!important;}
 .fire-container {display:flex; justify-content:center; align-items:center; height:200px; gap:5px}
 .flame {width:20px; height:40px; background:linear-gradient(to top,#ff4500,#ffa500,#ffff00); border-radius:50% 50% 50% 50%/60% 60% 40% 40%; animation:flicker 0.3s infinite alternate; box-shadow:0 0 20px #ff4500}
@@ -50,7 +51,8 @@ header, [data-testid="stToolbar"], [data-testid="stDecoration"] { display: none 
 .loading-text {text-align:center; margin-top:20px; font-size:18px; color:#ff6347; font-weight:bold}
 .section-title {font-size:0.75rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); padding-bottom:4px; margin:1rem 0 0.6rem}
 </style>
-""", unsafe_allow_html=True)
+"""
+st.markdown(css_code, unsafe_allow_html=True)
 
 # ═════════════════════════════════════════════════════════════
 #  CHARGEMENT DES DONNÉES
@@ -117,7 +119,6 @@ def load_geojson():
     r.raise_for_status()
     return r.json()
 
-# Écran de chargement initial
 if 'ds' not in st.session_state:
     ld = st.empty()
     with ld.container():
@@ -176,13 +177,24 @@ if 'step_idx' not in st.session_state: st.session_state.step_idx = 0
 if 'lat_target' not in st.session_state: st.session_state.lat_target = 45.0
 if 'lon_target' not in st.session_state: st.session_state.lon_target = 5.0
 if 'variable' not in st.session_state: st.session_state.variable = 'ifm'
+if 'is_playing' not in st.session_state: st.session_state.is_playing = False
 
 # ═════════════════════════════════════════════════════════════
-#  SIDEBAR (AVEC SLIDER TEMPOREL AMÉLIORÉ)
+#  SIDEBAR
 # ═════════════════════════════════════════════════════════════
 with st.sidebar:
     st.markdown("### 🔥 IFM · AROME 1.3km")
     st.caption("Prévision numérique haute résolution")
+    st.markdown('<div style="height:1px;background:#ddd;margin:12px 0"></div>', unsafe_allow_html=True)
+    
+    # -- NAVIGATION --
+    st.markdown('<div class="section-title">Navigation</div>', unsafe_allow_html=True)
+    page_choisie = st.radio(
+        "Menu", 
+        ["🗺️ Carte Spatiale", "📈 Séries Temporelles"], 
+        label_visibility="collapsed"
+    )
+
     st.markdown('<div style="height:1px;background:#ddd;margin:12px 0"></div>', unsafe_allow_html=True)
     
     st.markdown('<div class="section-title">Variable affichée</div>', unsafe_allow_html=True)
@@ -192,7 +204,6 @@ with st.sidebar:
     
     st.markdown('<div class="section-title">Échéance temporelle</div>', unsafe_allow_html=True)
     
-    # --- NOUVEAU SLIDER TEMPOREL ---
     selected_time_label = st.select_slider(
         "Échéance", 
         options=time_labels, 
@@ -200,35 +211,55 @@ with st.sidebar:
         label_visibility="collapsed"
     )
     
-    # Mise à jour de l'index si le slider change
     if time_labels.index(selected_time_label) != st.session_state.step_idx:
         st.session_state.step_idx = time_labels.index(selected_time_label)
+        st.session_state.is_playing = False # Stoppe la lecture si on manipule le slider
         st.rerun()
 
     st.caption(f"+{st.session_state.step_idx}h depuis le run initial")
     
+    # --- CONTRÔLES LECTURE ---
     cols = st.columns(5)
-    if cols[0].button("⏮", use_container_width=True): st.session_state.step_idx = 0; st.rerun()
-    if cols[1].button("◀", use_container_width=True): st.session_state.step_idx = max(0, st.session_state.step_idx - 1); st.rerun()
-    cols[2].button("▶", use_container_width=True, key="play")  # Placeholder pour animation
-    if cols[3].button("▶", use_container_width=True, key="next_step"): st.session_state.step_idx = min(n_steps - 1, st.session_state.step_idx + 1); st.rerun()
-    if cols[4].button("⏭", use_container_width=True): st.session_state.step_idx = n_steps - 1; st.rerun()
+    
+    if cols[0].button("⏮", width="stretch"): 
+        st.session_state.step_idx = 0
+        st.session_state.is_playing = False
+        st.rerun()
+        
+    if cols[1].button("◀", width="stretch"): 
+        st.session_state.step_idx = max(0, st.session_state.step_idx - 1)
+        st.session_state.is_playing = False
+        st.rerun()
+        
+    play_icon = "⏸" if st.session_state.is_playing else "▶️"
+    if cols[2].button(play_icon, width="stretch", key="play"): 
+        st.session_state.is_playing = not st.session_state.is_playing
+        st.rerun()
+        
+    if cols[3].button("▶", width="stretch", key="next_step"): 
+        st.session_state.step_idx = min(n_steps - 1, st.session_state.step_idx + 1)
+        st.session_state.is_playing = False
+        st.rerun()
+        
+    if cols[4].button("⏭", width="stretch"): 
+        st.session_state.step_idx = n_steps - 1
+        st.session_state.is_playing = False
+        st.rerun()
 
-# Tranche de données actuelle
 data_slice = ds.isel(time=st.session_state.step_idx)
 var_key = st.session_state.variable
 cmap_cfg = {"ifm": "RdYlGn_r", "temp": "RdYlBu_r", "wind": "Blues", "hr": "GnBu"}
 img, vrange = create_raster_overlay(data_slice[var_key], cmap_cfg.get(var_key, "RdYlGn_r"))
 
-# ═════════════════════════════════════════════════════════════
-#  ONGLETS PRINCIPAUX
-# ═════════════════════════════════════════════════════════════
-tab_carte, tab_graphs = st.tabs(["🗺️ Carte Spatiale", "📈 Séries Temporelles"])
 
-# ──────────────────────────────────────────────────────────────
-#  ONGLET CARTE
-# ──────────────────────────────────────────────────────────────
-with tab_carte:
+# ═════════════════════════════════════════════════════════════
+#  AFFICHAGE DU CONTENU PRINCIPAL
+# ═════════════════════════════════════════════════════════════
+
+if page_choisie == "🗺️ Carte Spatiale":
+    # ──────────────────────────────────────────────────────────────
+    #  PAGE : CARTE
+    # ──────────────────────────────────────────────────────────────
     lats, lons = ds[LAT].values, ds[LON].values
     center_lat, center_lon = (float(lats.min()) + float(lats.max())) / 2, (float(lons.min()) + float(lons.max())) / 2
     
@@ -238,7 +269,6 @@ with tab_carte:
         bounds = [[float(lats.min()), float(lons.min())], [float(lats.max()), float(lons.max())]]
         folium.raster_layers.ImageOverlay(image=img, bounds=bounds, opacity=1.0, interactive=True, cross_origin=False, zindex=1).add_to(m)
         
-    # Contour des départements
     for feat in geojson.get('features', []):
         geom = feat.get('geometry', {})
         coords_list = [geom['coordinates']] if geom.get('type') == 'Polygon' else geom.get('coordinates', []) if geom.get('type') == 'MultiPolygon' else []
@@ -246,27 +276,25 @@ with tab_carte:
             for ring in poly:
                 folium.PolyLine(locations=list(zip([c[1] for c in ring], [c[0] for c in ring])), color='rgba(0,0,0,0.6)', weight=1.5).add_to(m)
 
-    # Marqueur
     folium.Marker(
         location=[st.session_state.lat_target, st.session_state.lon_target],
         popup="Point actif",
         icon=folium.Icon(color="red", icon="crosshairs", prefix='fa')
     ).add_to(m)
     
+    # Affichage carte
     map_data = st_folium(m, width="100%", height=600, returned_objects=["last_clicked"])
     
     if map_data and map_data.get("last_clicked"):
         st.session_state.lat_target = map_data["last_clicked"]["lat"]
         st.session_state.lon_target = map_data["last_clicked"]["lng"]
+        st.session_state.is_playing = False # Stoppe la lecture si on clique sur la carte
         st.rerun()
 
-    # --- CORRECTION DES MÉTRIQUES ---
     st.markdown('<div class="section-title">📍 Métriques du point sélectionné (Échéance actuelle)</div>', unsafe_allow_html=True)
     st.caption(f"Coordonnées : {st.session_state.lat_target:.4f}°N, {st.session_state.lon_target:.4f}°E")
     
-    # Récupération des données locales (au point cliqué) et non la moyenne globale
     local_data = data_slice.sel({LAT: st.session_state.lat_target, LON: st.session_state.lon_target}, method="nearest")
-    
     def get_val(var): return float(local_data[var].values) if var in local_data else 0.0
 
     cols = st.columns(4)
@@ -285,10 +313,10 @@ with tab_carte:
         </div>
         """, unsafe_allow_html=True)
 
-# ──────────────────────────────────────────────────────────────
-#  ONGLET GRAPHIQUES
-# ──────────────────────────────────────────────────────────────
-with tab_graphs:
+elif page_choisie == "📈 Séries Temporelles":
+    # ──────────────────────────────────────────────────────────────
+    #  PAGE : GRAPHIQUES
+    # ──────────────────────────────────────────────────────────────
     try:
         ts = ds.sel({LAT: st.session_state.lat_target, LON: st.session_state.lon_target}, method="nearest")
         df = pd.DataFrame({
@@ -301,24 +329,33 @@ with tab_graphs:
         
         fig = make_subplots(rows=2, cols=2, subplot_titles=("IFM", "Température", "Vent", "Humidité"), vertical_spacing=0.12)
         
-        # Ajout des traces
         fig.add_trace(go.Scatter(x=df['Date'], y=df['IFM'], fill='tozeroy', fillcolor='rgba(192,57,43,0.1)', line=dict(color='#c0392b', width=2), name='IFM'), row=1, col=1)
         fig.add_trace(go.Scatter(x=df['Date'], y=df['Temp'], line=dict(color='#e65100', width=2), name='Temp'), row=1, col=2)
         fig.add_trace(go.Scatter(x=df['Date'], y=df['Vent'], line=dict(color='#1565c0', width=2), name='Vent'), row=2, col=1)
         fig.add_trace(go.Scatter(x=df['Date'], y=df['HR'], line=dict(color='#43a047', width=2), name='HR'), row=2, col=2)
         
-        # Ligne verticale pour l'échéance en cours
         fig.add_vline(x=time_labels[st.session_state.step_idx], line_color='rgba(0,0,0,0.5)', line_width=1, line_dash="dash")
         
         fig.update_layout(height=600, showlegend=False, template="plotly_white", font=dict(family='Source Sans 3', size=11))
         fig.update_xaxes(showgrid=True, gridcolor='#ebebeb')
         fig.update_yaxes(showgrid=True, gridcolor='#ebebeb')
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
         
         st.markdown('<div class="section-title">Tableau des échéances</div>', unsafe_allow_html=True)
-        st.dataframe(df.round(1), use_container_width=True, height=250)
+        st.dataframe(df.round(1), width="stretch", height=250)
         
     except Exception as e:
         st.error(f"Erreur lors de la création des graphiques : {e}")
 
+# ═════════════════════════════════════════════════════════════
+#  BOUCLE D'ANIMATION (À placer tout à la fin du script)
+# ═════════════════════════════════════════════════════════════
+if st.session_state.is_playing:
+    if st.session_state.step_idx < n_steps - 1:
+        time.sleep(1.0) # Pause de 1 seconde entre chaque frame
+        st.session_state.step_idx += 1
+        st.rerun()
+    else:
+        st.session_state.is_playing = False
+        st.rerun()
